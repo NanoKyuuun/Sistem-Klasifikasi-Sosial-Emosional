@@ -1,182 +1,323 @@
 # Blueprint Sistem Klasifikasi Tingkat Perkembangan Sosial Emosional Anak Usia Dini
 
-**Lokasi penelitian:** RA Qotrunnada  
-**Metode utama:** Extreme Gradient Boosting (XGBoost)  
-**Bentuk aplikasi:** Dashboard berbasis Streamlit  
-**Status dokumen:** Rancangan awal untuk diskusi; beberapa keputusan tentang data perlu dikonfirmasi.
+**Konteks penelitian:** RA Qotrunnada  
+**Algoritma:** Extreme Gradient Boosting (XGBoost)  
+**Aplikasi:** Dashboard Streamlit  
+**Diperbarui:** 26 September 2026  
+**Status:** Acuan pengembangan prototipe dengan skor dan label simulasi. Model belum dilatih dan hasil akurasi belum tersedia.
 
-## 1. Gambaran singkat
+## 1. Gambaran sistem
 
-Sistem ini membantu guru mengolah hasil penilaian sosial emosional anak. Guru memberi skor pada sejumlah indikator perilaku, lalu sistem menampilkan salah satu dari empat kategori perkembangan: **BB** (Belum Berkembang), **MB** (Mulai Berkembang), **BSH** (Berkembang Sesuai Harapan), atau **BSB** (Berkembang Sangat Baik).
+Sistem menerima delapan skor indikator sosial emosional, kemudian menampilkan perkiraan kategori perkembangan: BB, MB, BSH, atau BSB. Pengguna dapat memasukkan satu penilaian melalui formulir atau mengunggah Excel untuk memproses banyak baris sekaligus.
 
-XGBoost adalah metode yang belajar dari contoh penilaian sebelumnya. Setelah dilatih dengan data yang sudah memiliki kategori akhir, model dapat memperkirakan kategori untuk penilaian baru. Streamlit dipakai untuk menyediakan formulir, unggah Excel, dan tampilan hasil yang mudah digunakan. Hasil prediksi membantu guru meninjau penilaian; kategori akhir dan tindak lanjut tetap berada dalam kewenangan guru.
+XGBoost mempelajari hubungan antara skor indikator dan kategori pada contoh yang tersedia. Proses belajar ini disebut **pelatihan model**. Model yang telah dilatih kemudian menghasilkan **prediksi** untuk masukan baru. Streamlit menyediakan halaman aplikasi agar pengguna dapat bekerja melalui formulir, tombol, tabel, dan grafik.
 
-**Ruang lingkup awal:** prototipe tugas akhir menggunakan dataset Excel yang diberikan. Angka keberhasilan dari data dummy menunjukkan apakah alur prototipe berjalan, belum membuktikan tingkat ketepatan pada data anak yang sebenarnya.
+Pada prototipe ini, delapan skor dan kategorinya merupakan simulasi. Nama, kelas, dan umur berasal dari file sampel pengguna, dipasangkan berdasarkan No. Kategori simulasi yang terpasang pada nama anak **tidak menunjukkan penilaian sebenarnya atas anak tersebut**.
 
-## 2. Dasar rancangan dari berkas yang tersedia
+Tujuan tahap ini adalah menguji alur aplikasi dan evaluasi dengan data yang jelas asalnya. Pemakaian untuk penelitian lapangan memerlukan penilaian serta label rujukan yang diperoleh melalui prosedur penelitian yang sesuai.
 
-Rancangan ini mengacu pada `SKRIPSI.docx` dan `Data Penelitian Anak Qotrunnada.xlsx` yang diberikan. Naskah membahas penerapan XGBoost, empat kategori perkembangan, evaluasi klasifikasi, serta implementasi dashboard Streamlit. Bab III menyebut **8 indikator**, sedangkan Excel menyediakan **10 kolom indikator**. Blueprint ini memakai **10 indikator sesuai Excel**; angka dalam naskah perlu disesuaikan ketika metodologi sudah disepakati.
+## 2. Acuan dan keputusan yang sudah ditetapkan
 
-Excel memuat **110 baris penilaian** dalam empat kelas, tanpa sel kosong pada kolom yang diamati. Distribusi label saat pemeriksaan awal adalah:
-
-| Kategori | Jumlah baris |
-| --- | ---: |
-| BB | 5 |
-| MB | 32 |
-| BSH | 61 |
-| BSB | 12 |
-
-Distribusi tersebut penting karena kelas BB sangat sedikit. Nilai akurasi keseluruhan saja dapat menyembunyikan kesalahan model dalam mengenali kelas yang jarang muncul.
-
-> **Catatan yang harus dikonfirmasi:** Kolom `Tingkat_Perkembangan_Sosial_Emosional` berisi label BB, MB, BSH, dan BSB. Belum diketahui apakah label ditetapkan oleh guru berdasarkan rubrik dan observasi, atau dihitung dengan aturan tertentu. Asal label harus dicatat apa adanya sebelum pelatihan model dan penafsiran hasil evaluasi. Jangan menyatakan label berasal dari keputusan guru atau rumus tertentu sebelum ada konfirmasi. Beberapa label dalam Excel tidak mengikuti batas sederhana berdasarkan rata-rata sepuluh skor, sehingga aturan pembentukannya tidak dapat disimpulkan hanya dari berkas ini.
-
-## 3. Tujuan dan batasan sistem
-
-### Tujuan
-
-1. Menerima penilaian sepuluh indikator melalui formulir atau berkas Excel.
-2. Menghasilkan prediksi salah satu dari empat kategori dengan model XGBoost yang telah dilatih.
-3. Memperlihatkan skor indikator, hasil prediksi, dan ringkasan data dengan cara yang dapat diperiksa guru.
-4. Menampilkan evaluasi model secara jujur, termasuk kinerja setiap kategori.
-5. Menyediakan hasil prediksi banyak baris untuk diunduh sebagai Excel.
-
-### Batasan
-
-- Sistem berfokus pada klasifikasi berdasarkan **penilaian sosial emosional**, bukan diagnosis perkembangan atau pengganti asesmen guru.
-- `Nama`, `No`, dan `Kelas` dapat membantu mengenali baris dalam antarmuka, tetapi **tidak menjadi fitur model pada rancangan awal**. `Jenis_Kelamin` dan `Usia` juga belum digunakan sebagai fitur; penggunaannya memerlukan alasan metodologis dan pemeriksaan format data.
-- Data yang diunggah untuk **prediksi** tidak otomatis menjadi data latih. Pelatihan menggunakan dataset berlabel yang telah diperiksa dan ditetapkan terpisah.
-- Login, akun banyak guru, penyimpanan riwayat permanen, dan akses daring untuk sekolah belum termasuk cakupan prototipe awal. Jika aplikasi dipublikasikan dengan data anak yang dapat dikenali, akses dan penyimpanan data perlu dirancang lebih lanjut.
-- Sistem tidak membuat saran penanganan individual secara otomatis dari satu label. Rekomendasi tindak lanjut memerlukan rubrik atau arahan yang disetujui guru.
-
-## 4. Pengguna dan alur kerja
-
-**Pengguna utama:** guru atau peneliti yang mengolah penilaian. Pengguna menyiapkan skor indikator, memeriksa validitasnya, menjalankan prediksi, dan meninjau hasil. Peneliti juga melihat metrik evaluasi selama penelitian.
-
-### A. Prediksi satu penilaian
-
-1. Pengguna membuka halaman **Prediksi satu anak**.
-2. Pengguna memasukkan sepuluh skor indikator, masing-masing dari 1 sampai 4. Nama atau kode anak bersifat opsional untuk menandai hasil, bukan masukan model.
-3. Aplikasi memeriksa apakah semua nilai terisi dan berada pada rentang yang benar.
-4. Aplikasi menampilkan kategori prediksi beserta nilai indikator yang digunakan.
-5. Guru meninjau hasil sebelum menggunakannya untuk pencatatan atau tindak lanjut.
-
-### B. Prediksi dari Excel
-
-1. Pengguna mengunggah berkas `.xlsx` dengan sepuluh kolom indikator.
-2. Aplikasi menampilkan jumlah baris, contoh kolom, serta kesalahan format per baris apabila ada.
-3. Setelah data valid, pengguna menjalankan prediksi untuk semua baris.
-4. Aplikasi menampilkan ringkasan jumlah hasil per kategori dan tabel hasil.
-5. Pengguna dapat mengunduh Excel yang berisi data asal dan kolom `Prediksi_Kategori` serta status validasi bila diperlukan.
-
-Jika file unggahan memuat kolom kategori asal, aplikasi harus membedakan secara jelas **label asal** dan **prediksi model**. Label asal tidak dipakai sebagai masukan untuk memprediksi baris itu.
-
-## 5. Format data yang disepakati sementara
-
-### Kolom indikator yang menjadi masukan model
-
-Seluruh indikator berikut diisi dengan **angka 1, 2, 3, atau 4** sesuai skala penilaian yang digunakan sekolah. Arti rinci setiap angka harus mengikuti rubrik yang dikonfirmasi; aplikasi tidak boleh mengarang deskripsi perilaku untuk masing-masing skor.
-
-| No. | Kolom di Excel | Nama yang ditampilkan di aplikasi |
-| ---: | --- | --- |
-| 1 | `Mengenali_dan_mengekspresikan_emosi` | Mengenali dan mengekspresikan emosi |
-| 2 | `Mengendalikan_emosi` | Mengendalikan emosi |
-| 3 | `Berinteraksi_dengan_teman` | Berinteraksi dengan teman |
-| 4 | `Bekerja_sama` | Bekerja sama |
-| 5 | `Berbagi_dan_menunggu_giliran` | Berbagi dan menunggu giliran |
-| 6 | `Menunjukkan_empati` | Menunjukkan empati |
-| 7 | `Mandiri` | Mandiri |
-| 8 | `Bertanggung_jawab` | Bertanggung jawab |
-| 9 | `Mengikuti_aturan` | Mengikuti aturan |
-| 10 | `Percaya_diri` | Percaya diri |
-
-### Kolom lain
-
-| Kolom | Peran dalam rancangan awal | Catatan |
-| --- | --- | --- |
-| `No` | Penanda urutan | Tidak masuk model; bukan identitas anak yang stabil. |
-| `Nama` | Identifikasi pada tampilan hasil bila diperlukan | Tidak masuk model; data anak harus dibatasi aksesnya. |
-| `Kelas` | Pengelompokan tampilan bila diperlukan | Tidak masuk model. |
-| `Jenis_Kelamin` | Informasi pendukung | Tidak masuk model pada tahap awal. |
-| `Usia` | Informasi pendukung | Tidak masuk model pada tahap awal. Nilai seperti `5.11` perlu dijelaskan: usia 5 tahun 11 bulan tidak sama dengan 5,11 tahun desimal. |
-| `Tingkat_Perkembangan_Sosial_Emosional` | Label target untuk data pelatihan dan evaluasi | Wajib pada data latih; tidak wajib pada data prediksi baru. Asal dan rubrik label masih perlu dikonfirmasi. |
-
-**Aturan pemeriksaan data:** sepuluh indikator wajib ada; skor harus bilangan bulat 1–4; label data latih hanya boleh BB, MB, BSH, atau BSB. Sel kosong, teks yang tidak dapat dibaca sebagai skor, dan angka di luar rentang ditandai dengan nama kolom serta nomor baris. Data yang bermasalah tidak diam-diam diubah menjadi skor tertentu. Kemungkinan penilaian berulang atas anak yang sama juga perlu diperiksa sebelum pembagian data agar catatan anak yang sama tidak membuat pengujian tampak terlalu baik.
-
-## 6. Rancangan halaman Streamlit
-
-| Halaman | Isi utama | Manfaat bagi pengguna |
-| --- | --- | --- |
-| **Beranda** | Penjelasan tujuan sistem, empat kategori, jumlah data yang digunakan dalam model, dan petunjuk singkat. | Pengguna memahami apa yang dikerjakan sistem. |
-| **Data dan validasi** | Unggah Excel, pratinjau kolom, jumlah baris, distribusi label bila tersedia, serta daftar kesalahan per baris. | Pengguna tahu apakah file siap diproses. |
-| **Prediksi satu anak** | Formulir 10 indikator dan hasil kategori. | Memeriksa satu penilaian tanpa menyiapkan file. |
-| **Prediksi banyak data** | Unggah Excel, jalankan prediksi, lihat tabel dan ringkasan kategori, unduh hasil. | Mengolah penilaian dalam jumlah banyak. |
-| **Evaluasi model** | Penjelasan data dan metode pengujian, confusion matrix, metrik tiap kelas, dan catatan keterbatasan. | Peneliti dapat menjelaskan cara menilai model. |
-| **Tentang sistem** | Arti istilah, daftar indikator, batas pemakaian hasil, dan sumber/rubrik setelah dikonfirmasi. | Pengguna awam dapat memahami angka dan kategori. |
-
-Halaman evaluasi harus memakai hasil evaluasi yang benar-benar berasal dari dataset dan prosedur penelitian yang terdokumentasi, bukan angka contoh yang ditulis permanen pada tampilan.
-
-## 7. Cara model XGBoost disiapkan
-
-Istilah sederhana: **fitur** adalah sepuluh skor yang diberikan guru; **label** adalah kategori akhir pada data contoh; **pelatihan** adalah proses model mempelajari hubungan keduanya; **prediksi** adalah kategori yang dihasilkan untuk penilaian baru.
-
-1. **Pemilihan data:** ambil sepuluh indikator dan label dari data yang telah disetujui. Kolom identitas dan label tidak boleh ikut sebagai fitur.
-2. **Pembersihan:** periksa skor kosong/tidak valid, konsistensi penulisan kategori, baris ganda, serta catatan yang berasal dari anak yang sama. Catat jumlah baris yang diperbaiki atau dikeluarkan beserta alasannya.
-3. **Pengkodean:** skor 1–4 tetap berupa angka. Empat label dipetakan secara konsisten ke kode internal untuk kebutuhan model; hasil ditampilkan kembali dengan nama kategori aslinya.
-4. **Pelatihan:** latih model XGBoost multikelas dengan pengaturan parameter yang dicatat agar percobaan dapat diulang. Simpan urutan sepuluh kolom dan pemetaan kategori bersama model.
-5. **Pemakaian aplikasi:** aplikasi memuat model yang sudah disiapkan. Berkas Excel yang diunggah untuk prediksi diperiksa dengan urutan kolom yang sama, lalu diproses tanpa melatih ulang model setiap kali pengguna membuka halaman.
-
-Jika ternyata label akhir dibuat **murni dari sebuah rumus atas sepuluh skor**, rumus itu perlu dijadikan pembanding yang transparan. Hasil XGBoost dalam keadaan tersebut menunjukkan seberapa baik model meniru rumus, bukan menemukan penilaian perkembangan yang berdiri sendiri. Keputusan apakah XGBoost tetap menjadi fokus penelitian perlu disepakati berdasarkan tujuan skripsi.
-
-## 8. Rencana evaluasi model
-
-**Pertanyaan evaluasi:** seberapa sering prediksi cocok dengan label rujukan yang sah, dan kategori mana yang paling sering tertukar?
-
-- Gunakan **confusion matrix** untuk melihat jumlah prediksi benar dan salah antar empat kategori.
-- Laporkan **precision, recall, dan F1-score untuk setiap kategori**, ditambah **macro F1** agar kelas kecil tetap diperhatikan. Laporkan accuracy sebagai informasi tambahan.
-- Untuk pemeriksaan awal pada 110 baris ini, dapat digunakan **stratified 5-fold cross-validation** dengan pengaturan model yang ditetapkan lebih dulu. Setiap pembagian mempertahankan proporsi kelas sebisa mungkin. Karena BB hanya memiliki 5 contoh, tiap bagian uji kira-kira hanya memuat satu contoh BB; hasil per kelas tersebut sangat mudah berubah.
-- Jika parameter model dicari berdasarkan hasil validasi, hasil validasi yang sama tidak boleh sekaligus diklaim sebagai evaluasi akhir yang independen. Pemisahan data uji atau rancangan validasi bertingkat perlu ditentukan sebelum eksperimen final.
-- Naskah saat ini juga menyebut pembagian data latih/uji. **Jangan menyalin klaim “5-fold” dan “data uji terpisah” sebagai prosedur final sebelum rancangan pembagian data diputuskan.** Dengan pembagian uji 20%, kelas BB diperkirakan hanya menyisakan empat contoh pada data latih, sehingga stratified 5-fold pada data latih tidak dapat dilakukan sebagaimana ditulis.
-- Untuk kesimpulan penelitian yang lebih kuat, kumpulkan data berlabel tambahan, terutama kategori BB, dan uji pada penilaian yang belum pernah dipakai untuk memilih parameter model. Jika anak dinilai berkali-kali, pisahkan penilaian menurut identitas anak saat menguji kemampuan model pada anak baru.
-
-**Batas kesimpulan:** bila data masih dummy, hasil evaluasi hanya menunjukkan perilaku model pada data simulasi. Laporan tidak boleh menyebutnya sebagai akurasi yang terbukti pada penilaian anak sebenarnya.
-
-## 9. Kesesuaian dengan skripsi
-
-| Bagian naskah | Penyesuaian yang perlu direncanakan |
+| Acuan | Fungsi |
 | --- | --- |
-| Bab I: rumusan masalah dan tujuan | Rumusan masalah menyebut penerapan model, dashboard, akurasi, dan hasil klasifikasi. Tujuan penelitian perlu menjawab seluruh rumusan itu secara jelas; saat ini tujuan yang tercantum belum dipasangkan satu per satu. |
-| Bab II: teori | Gunakan istilah fitur, label, klasifikasi multikelas, XGBoost, evaluasi model, dan Streamlit secara konsisten. Definisi empat kategori dan dasar rubrik perlu menyertakan sumber yang benar. |
-| Bab III: data dan preprocessing | Ubah pernyataan 8 indikator menjadi 10 jika seluruh kolom Excel tetap dipakai. Jelaskan asal label setelah dikonfirmasi serta cara memeriksa nilai kosong dan pencatatan berulang. |
-| Bab III: evaluasi | Pilih prosedur pembagian data yang sungguh dapat dijalankan dengan jumlah kelas BB saat ini. Selaraskan uraian 5-fold, data latih/uji, dan pemilihan parameter. |
-| Bab III: dashboard | Samakan halaman, format masukan, keluaran, dan pengujian fungsional dengan blueprint yang disetujui. |
-| Bab hasil/pembahasan | Angka metrik baru ditulis setelah eksperimen dilakukan; jelaskan apakah data dummy atau data penilaian nyata. |
+| `SKRIPSI.docx` | Acuan tujuan, delapan indikator, XGBoost, evaluasi, dan dashboard Streamlit. |
+| `DATA-DUMMY-SIMULASI-110-ANAK.xlsx` | Dataset prototipe yang dilengkapi kode target, pembagian latih/uji, dan lima fold. |
+| `Data Penelitian Anak RA Qotrunnada(1).xlsx` | Sumber Nama, Kelas, dan Umur yang dipasangkan melalui No. |
+| Sheet `8 Indikator` | Acuan definisi dan urutan X1–X8. |
 
-## 10. Tahap pengerjaan setelah blueprint disetujui
+Keputusan untuk implementasi awal:
 
-| Tahap | Hasil yang harus tersedia |
+- Dataset berisi **110 baris** dengan delapan fitur X1–X8 bernilai bulat 1–4.
+- Jumlah kategori diacak dalam rentang **10–40 per kategori**, dengan total 110.
+- Distribusi yang dihasilkan adalah **BB 30, MB 14, BSH 39, dan BSB 27**.
+- Asal label simulasi sudah diketahui: jumlah delapan skor dengan batas kategori pada bagian 5.
+- Pembagian stratified menghasilkan **88 data latih dan 22 data uji**. Pembagian ini menjaga perwakilan setiap kategori sebisa mungkin.
+- **Stratified 5-fold cross-validation diterapkan pada 88 data latih**. Data uji akhir disisihkan dari pemilihan pengaturan model.
+- Prototipe awal berjalan secara lokal melalui Streamlit. Kebutuhan akun dan akses daring dapat ditentukan setelah alur utama berjalan.
+
+Rasio 80:20 merupakan keputusan teknis prototipe. Naskah menyebut beberapa skenario pembagian, tetapi belum menetapkan rasio tertentu. Uraian metode perlu diselaraskan ketika rancangan penelitian final ditetapkan.
+
+## 3. Tujuan, pengguna, dan cakupan
+
+### Tujuan aplikasi
+
+1. Membaca dan memeriksa data penilaian dari Excel.
+2. Menyediakan pelatihan dan evaluasi XGBoost yang dapat diulang.
+3. Menghasilkan prediksi untuk satu penilaian atau banyak penilaian.
+4. Memperlihatkan jumlah hasil per kategori dan menyediakan unduhan hasil.
+5. Menjelaskan masukan, metode, dan keluaran dengan bahasa yang mudah dipahami.
+
+**Peneliti** menyiapkan data, menjalankan eksperimen, dan meninjau evaluasi. **Guru atau pengguna demonstrasi** memakai model yang sudah disiapkan untuk mencoba prediksi. Pembagian ini menjelaskan alur kerja, belum merupakan sistem hak akses berbasis akun.
+
+Versi awal mencakup validasi Excel, ringkasan data, pelatihan, evaluasi, formulir prediksi, prediksi dari Excel, serta ekspor hasil. Riwayat penilaian permanen, akun banyak guru, integrasi sistem sekolah, dan rekomendasi penanganan individual belum termasuk kebutuhan versi awal.
+
+Hasil aplikasi merupakan keluaran prototipe klasifikasi. Penafsiran perkembangan anak dan tindak lanjut memerlukan penilaian guru dengan rubrik yang sesuai.
+
+## 4. Struktur data
+
+### Delapan fitur model
+
+**Fitur** adalah informasi yang masuk ke model untuk menghasilkan prediksi. Model hanya menerima delapan kolom berikut, dengan urutan yang tetap.
+
+| Kode | Aspek | Indikator |
+| --- | --- | --- |
+| X1 | Kesadaran diri | Mengenali dan mengekspresikan perasaan/emosi |
+| X2 | Kesadaran diri | Mengendalikan emosi |
+| X3 | Kesadaran diri | Menunjukkan kemampuan menyesuaikan diri |
+| X4 | Tanggung jawab terhadap diri sendiri dan orang lain | Mematuhi aturan |
+| X5 | Tanggung jawab terhadap diri sendiri dan orang lain | Bertanggung jawab atas perilaku/tugas |
+| X6 | Perilaku prososial | Bekerja sama dengan orang lain |
+| X7 | Perilaku prososial | Menunjukkan empati dan memahami perasaan orang lain |
+| X8 | Perilaku prososial | Berbagi dan membantu orang lain |
+
+Skor 1–4 dalam demonstrasi mewakili urutan BB, MB, BSH, BSB pada indikator. Deskripsi perilaku untuk pemberian skor dalam observasi nyata tetap perlu mengikuti rubrik sekolah; blueprint ini tidak menetapkan rubrik observasi baru.
+
+### Kolom pendukung dan persiapan model
+
+| Kolom | Kegunaan | Masuk sebagai fitur? |
+| --- | --- | --- |
+| `No` | Mencocokkan baris dan metadata dalam berkas ini | Tidak |
+| `Nama` | Identitas sampel untuk tampilan detail | Tidak |
+| `Kelas` | Informasi dan filter tampilan | Tidak |
+| `Umur` | Teks tahun,bulan; contoh 5,10 berarti 5 tahun 10 bulan | Tidak |
+| `Target` | Kategori rujukan BB, MB, BSH, atau BSB | Tidak; merupakan label |
+| `Target_Skripsi` | Pengkodean kategori menjadi 1–4 | Tidak |
+| `Target_XGBoost` | Pengkodean target menjadi 0–3 | Tidak; digunakan sebagai y |
+| `Bagian_Data` | Penanda Latih atau Uji | Tidak |
+| `Fold_Validasi` | Kelompok validasi 1–5; 0 untuk data uji akhir | Tidak |
+
+Umur tidak dibaca sebagai angka tahun desimal. No hanya menjadi kunci pencocokan dalam berkas ini. Pada penilaian anak yang dilakukan berulang, diperlukan kode anak yang stabil dan periode penilaian.
+
+### Fungsi enam sheet Excel
+
+| Sheet | Isi dan penggunaan |
 | --- | --- |
-| 1. Pastikan definisi data | Rubrik skor 1–4, asal label akhir, status data dummy/nyata, dan keputusan memakai 10 indikator. |
-| 2. Tetapkan format Excel | Contoh template prediksi, aturan kolom wajib, serta pesan untuk data yang salah. |
-| 3. Siapkan eksperimen model | Dataset bersih, rancangan evaluasi yang dapat dijalankan, dan laporan metrik tiap kelas. |
-| 4. Rancang dashboard | Formulir, impor Excel, hasil prediksi, ringkasan, dan halaman evaluasi sesuai alur pengguna. |
-| 5. Uji fungsi | Periksa input valid/tidak valid, prediksi satu baris dan banyak baris, unduh hasil, serta kejelasan pesan kesalahan. |
-| 6. Selaraskan skripsi | Perbarui uraian metodologi dan hasil berdasarkan eksperimen yang benar-benar dilakukan. |
+| `Data Anak` | Metadata sampel, delapan skor simulasi, dan Target berbasis rumus. |
+| `Distribusi Target` | Ringkasan kategori yang dihitung dari Data Anak. |
+| `8 Indikator` | Definisi indikator, aspek, dan keterangan skala. |
+| `Aturan Simulasi` | Batas label, metode pengacakan, seed, dan sumber metadata. |
+| `Data Model` | Salinan data yang disiapkan untuk pelatihan, kode target, dan penanda pembagian. |
+| `Persiapan Model` | Penjelasan metode, tabel latih/uji, dan komposisi lima fold. |
 
-## 11. Kriteria prototipe dianggap siap didemonstrasikan
+Data Model adalah salinan pada saat pembagian dibuat. Jika skor atau Target pada Data Anak berubah, Data Model dan pembagiannya perlu dibuat ulang. Aplikasi harus memeriksa kecocokan skor dan Target berdasarkan No sebelum memakai pembagian yang tersimpan.
 
-- Pengguna dapat mengisi sepuluh indikator bernilai 1–4 dan memperoleh salah satu dari empat kategori.
-- Pengguna dapat mengunggah Excel sesuai format, melihat baris yang salah, menjalankan prediksi pada baris valid, dan mengunduh hasil.
-- Kolom nama, nomor, kelas, maupun label asal tidak masuk ke sepuluh fitur model.
-- Halaman evaluasi menampilkan metrik per kategori dan menjelaskan keterbatasan kelas BB serta status data dummy.
-- Nama kategori yang tampil sama dengan kategori pada data penelitian; urutan kolom input selalu sama dengan urutan saat pelatihan.
-- Penjelasan aplikasi dapat dipahami pengguna yang belum mengenal istilah machine learning.
+## 5. Asal label dan aturan simulasi
 
-## 12. Keputusan yang masih perlu jawaban klien
+Asal label pada dataset kerja saat ini sudah jelas. Target dihitung dari **total X1 + X2 + ... + X8**, dengan bobot yang sama untuk setiap indikator.
 
-1. **Asal label:** siapa yang menetapkan kategori BB–BSB, dan berdasarkan rubrik atau aturan apa? Bila memakai rumus, mohon berikan rumus aslinya.
-2. **Status data:** apakah Excel ini seluruhnya dummy, disamarkan dari penilaian nyata, atau campuran? Ini menentukan batas klaim hasil penelitian dan cara menjaga identitas anak.
-3. **Rubrik indikator:** apa makna skor 1, 2, 3, dan 4 pada setiap indikator? Apakah ada dokumen penilaian sekolah yang dapat dijadikan rujukan?
-4. **Identitas penilaian berulang:** apakah satu anak dapat muncul pada lebih dari satu baris atau periode? Jika ya, diperlukan kode anak dan tanggal/periode penilaian yang konsisten untuk pemeriksaan data dan evaluasi.
-5. **Pemakaian akhir:** prototipe hanya dipresentasikan secara lokal atau akan dipakai guru secara daring? Keputusan ini memengaruhi kebutuhan akun dan perlindungan data.
+| Total delapan skor | Target | Kode dalam naskah | Kode XGBoost |
+| --- | --- | ---: | ---: |
+| 8–13 | BB — Belum Berkembang | 1 | 0 |
+| 14–19 | MB — Mulai Berkembang | 2 | 1 |
+| 20–25 | BSH — Berkembang Sesuai Harapan | 3 | 2 |
+| 26–32 | BSB — Berkembang Sangat Baik | 4 | 3 |
 
-Setelah lima hal di atas dijawab, blueprint dapat ditetapkan menjadi spesifikasi implementasi dan Bab III dapat ditulis mengikuti proses yang benar-benar digunakan.
+Contoh: skor `2, 2, 3, 2, 3, 2, 3, 3` berjumlah 20, sehingga label simulasinya BSH dan kode target modelnya 2. Pengkodean target 0–3 tidak mengubah skor indikator 1–4 atau makna kategori.
+
+**Batas total di atas adalah aturan simulasi, bukan rubrik resmi sekolah atau STPPA.** Akurasi pada dataset ini mengukur kemampuan model mempelajari aturan simulasi. Rumus pembentuk Target harus dibedakan dari prediksi XGBoost: tombol prediksi wajib menggunakan model terlatih. Jika hasil rumus ditampilkan sebagai pembanding, beri nama yang jelas seperti “Kategori berdasarkan aturan simulasi”.
+
+Pengacakan memakai seed **20260926** dan generator Mulberry32. Jumlah kategori dipilih sekali dari kombinasi jumlah 10–40 yang totalnya 110. Kombinasi skor diambil tanpa pengulangan dari kelompok total skor masing-masing kategori, lalu urutan baris diacak. Dataset tidak dipilih dengan mencoba berulang kali untuk mendapatkan akurasi tertentu.
+
+## 6. Alur penggunaan
+
+### Menyiapkan model
+
+1. Buka dataset awal atau unggah Excel berlabel.
+2. Pilih sheet yang akan dipakai dan periksa pratinjau data.
+3. Jalankan validasi kolom, nilai, label, dan pembagian data.
+4. Tinjau distribusi kategori serta jumlah data latih, validasi, dan uji.
+5. Jalankan pelatihan dan validasi dengan pengaturan yang dicatat.
+6. Setelah pengaturan dipilih, latih kembali pada seluruh data latih dan lakukan evaluasi akhir pada data uji.
+7. Simpan model beserta informasi dataset, urutan fitur, kode kelas, dan evaluasinya.
+
+### Prediksi satu penilaian
+
+1. Buka Prediksi Satu Anak dan isi delapan skor.
+2. Tambahkan nama atau kode anak bila diperlukan untuk mengenali hasil.
+3. Jalankan prediksi setelah semua skor valid dan model tersedia.
+4. Lihat kategori prediksi, skor masukan, serta penanda bahwa model dilatih pada data simulasi.
+
+### Prediksi dari Excel
+
+1. Unggah Excel yang memuat X1–X8. Target tidak wajib ada.
+2. Pilih sheet data dan periksa hasil validasi.
+3. Jalankan prediksi setelah seluruh baris yang akan diproses valid.
+4. Lihat tabel hasil dan ringkasan kategori, lalu unduh hasil.
+
+Unggahan untuk prediksi tidak otomatis menjadi data latih. Jika model belum tersedia, aplikasi menampilkan petunjuk untuk menyiapkan model terlebih dahulu.
+
+## 7. Rancangan halaman Streamlit
+
+| Halaman | Isi utama | Tindakan pengguna |
+| --- | --- | --- |
+| Beranda | Tujuan, status model, status simulasi, dan petunjuk mulai | Memilih alur persiapan atau prediksi |
+| Data dan Validasi | Pilihan dataset/sheet, pratinjau, distribusi Target, daftar kesalahan | Mengunggah dan memeriksa data |
+| Pelatihan dan Evaluasi | Fitur, kode kelas, pembagian data, pengaturan model, tabel fold, dan metrik | Menjalankan eksperimen dan menyimpan model |
+| Prediksi Satu Anak | Delapan indikator dengan pilihan skor 1–4 dan metadata opsional | Mengisi penilaian dan melihat hasil |
+| Prediksi Excel | Unggah file, validasi, tabel hasil, ringkasan, dan unduhan | Memproses banyak baris |
+| Tentang Sistem | Arti kategori, indikator, aturan simulasi, batas pemakaian, dan sumber data | Membaca penjelasan metode |
+
+Formulir menampilkan nama indikator lengkap beserta kode X1–X8. Indikator yang belum diisi harus terlihat jelas; jangan mengisi skor secara diam-diam. Nama anak cukup muncul pada tabel detail yang memerlukannya, sementara grafik dan ringkasan memakai jumlah agregat.
+
+Hasil utama berupa kategori dan skor masukan. Akurasi keseluruhan model ditampilkan pada halaman evaluasi, bukan sebagai persentase kepastian bahwa prediksi seorang anak benar.
+
+## 8. Pemeriksaan impor Excel
+
+Pesan kesalahan menyebutkan nomor baris dan kolom agar pengguna dapat memperbaiki file.
+
+| Pemeriksaan | Perilaku aplikasi |
+| --- | --- |
+| Sheet salah atau X1–X8 tidak lengkap | Minta pengguna memilih sheet atau melengkapi kolom. |
+| Urutan kolom berbeda | Susun berdasarkan nama X1–X8, bukan posisi kolom. |
+| Skor kosong, desimal, teks tidak valid, atau di luar 1–4 | Tunjukkan baris bermasalah dan hentikan pemrosesan sampai diperbaiki. |
+| Target tidak ada pada data prediksi | Izinkan prediksi jika fitur lengkap. |
+| Target tidak ada atau kategorinya tidak sah pada data latih | Hentikan pelatihan dan tunjukkan kesalahan label. |
+| No duplikat saat memakai pembagian tersimpan | Minta ID baris yang unik. Nama yang sama saja belum membuktikan duplikasi. |
+| Data Model berbeda dari Data Anak | Beri petunjuk bahwa data persiapan perlu dibuat ulang. |
+| Terdapat metadata atau kolom angka tambahan | Gunakan hanya X1–X8 sebagai fitur. |
+| Data latih/uji bertumpang tindih atau fold salah | Hentikan pelatihan sampai pembagian diperbaiki. |
+| Kurang dari 5 contoh salah satu kelas pada data latih | Untuk alur yang mensyaratkan semua kelas pada setiap bagian validasi, minta penyesuaian data atau evaluasi. Jangan mengubah label otomatis. |
+
+Dataset awal memiliki skor lengkap dan tidak memiliki kombinasi delapan skor yang berulang. Pada data baru, kesamaan skor tidak otomatis berarti kesalahan: dua anak dapat memperoleh skor yang sama. Bedakan keadaan ini dari pencatatan ganda atas observasi yang sama.
+
+Jika pembaca Excel tidak memperoleh nilai hasil rumus Target, aplikasi meminta pengguna menghitung ulang dan menyimpan Excel, atau membaca Data Model yang sudah diperiksa. Target kosong tidak boleh dianggap sebagai BB.
+
+## 9. Pembagian data dan validasi
+
+### Data latih dan data uji akhir
+
+| Kategori | Seluruh data | Latih | Uji akhir |
+| --- | ---: | ---: | ---: |
+| BB | 30 | 24 | 6 |
+| MB | 14 | 11 | 3 |
+| BSH | 39 | 31 | 8 |
+| BSB | 27 | 22 | 5 |
+| **Total** | **110** | **88** | **22** |
+
+Data latih dipakai untuk mempelajari pola dan memilih pengaturan model. Data uji akhir dipakai setelah pemilihan selesai. Pengaturan model tidak dipilih berdasarkan skor tertinggi pada 22 data uji akhir.
+
+### Lima bagian validasi dari data latih
+
+| Fold validasi | BB | MB | BSH | BSB | Total validasi |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 1 | 4 | 2 | 7 | 5 | 18 |
+| 2 | 5 | 2 | 6 | 5 | 18 |
+| 3 | 5 | 3 | 6 | 4 | 18 |
+| 4 | 5 | 2 | 6 | 4 | 17 |
+| 5 | 5 | 2 | 6 | 4 | 17 |
+| **Total** | **24** | **11** | **31** | **22** | **88** |
+
+Pada putaran pertama, fold 1 digunakan untuk validasi dan empat fold lainnya untuk melatih model. Proses bergantian sampai semua fold pernah menjadi bagian validasi. Setiap baris data latih menjadi data validasi tepat sekali dalam lima putaran. Fold_Validasi = 0 menandai data uji akhir yang tidak ikut proses ini.
+
+Pembagian tersimpan dibuat dengan scikit-learn 1.8.0. Data latih/uji memakai `train_test_split`, `test_size=0.2`, `stratify=Target`, dan `random_state=20260926`. Validasi memakai `StratifiedKFold(n_splits=5, shuffle=True, random_state=20260926)`. Untuk mereproduksi pembagian persis sama, gunakan penanda Data Model. Jika membuat ulang, pertahankan urutan baris, sumber label, dan pengaturan tersebut.
+
+Keempat kategori sudah terdapat pada setiap fold. Namun jumlah data tetap kecil: MB hanya memiliki 2–3 contoh per bagian validasi dan 3 pada data uji akhir. Laporkan jumlah contoh bersama metriknya agar pembaca memahami batas hasil.
+
+## 10. Persiapan dan pelatihan XGBoost
+
+Alurnya mengikuti pemilihan data, pembersihan, transformasi, pemodelan, dan evaluasi dalam naskah.
+
+| Tahap | Keputusan prototipe |
+| --- | --- |
+| Pemilihan fitur | X = X1–X8, dengan urutan tetap. |
+| Label | y = Target_XGBoost; BB=0, MB=1, BSH=2, BSB=3. |
+| Kelengkapan | Data awal tidak memerlukan pengisian nilai kosong. Data baru yang tidak lengkap diperiksa terlebih dahulu. |
+| Bentuk tugas | Klasifikasi empat kelas dengan XGBoost berbasis pohon. |
+| Konfigurasi tugas | `objective=multi:softprob`, empat kelas (`num_class=4`); hasil dipetakan kembali ke BB–BSB. |
+| Parameter model | Jumlah pohon, kedalaman pohon, dan laju pembelajaran dicatat untuk setiap percobaan. Nilai terbaik belum ditentukan. |
+| Pemilihan parameter | Menggunakan validasi data latih. Macro F1 dapat menjadi ukuran utama, disertai metrik lain dalam skripsi. |
+| Model akhir | Latih kembali pada 88 data latih setelah parameter dipilih, lalu evaluasi pada 22 data uji akhir. |
+
+Target, kode target, total skor, No, dan penanda pembagian tidak boleh menjadi fitur. Total skor membentuk langsung label simulasi; memasukkannya akan mengubah tugas yang semula memakai delapan indikator. Pilih fitur melalui daftar nama kolom yang ditetapkan, bukan mengambil seluruh kolom numerik.
+
+Prototipe memakai skor asli 1–4 untuk model pohon tanpa normalisasi tambahan. Jika kelak ada pemrosesan yang belajar dari data, pemrosesan itu harus dipelajari pada bagian latih masing-masing fold dan diterapkan pada bagian validasinya.
+
+Tidak ada target akurasi yang dijanjikan sebelum eksperimen. Hasil rendah tetap dicatat; dataset tidak diacak ulang atau label diubah hanya untuk meningkatkan angka evaluasi.
+
+## 11. Evaluasi dan keluaran aplikasi
+
+### Evaluasi model
+
+| Keluaran | Arti bagi pengguna |
+| --- | --- |
+| Confusion matrix | Tabel kategori rujukan dan prediksi untuk melihat kategori yang tertukar. |
+| Accuracy | Proporsi seluruh contoh uji yang kategorinya diprediksi benar. |
+| Precision per kelas | Dari contoh yang diprediksi sebagai suatu kategori, berapa yang memang termasuk kategori itu. |
+| Recall per kelas | Dari seluruh contoh suatu kategori, berapa yang berhasil dikenali. |
+| F1-score per kelas | Ukuran yang menggabungkan precision dan recall. |
+| Macro average | Rata-rata empat kategori dengan bobot yang sama untuk setiap kategori. |
+| Jumlah contoh | Banyaknya data yang mendasari setiap nilai evaluasi. |
+
+Tampilkan metrik setiap fold, rata-rata, dan simpangan baku sebagai gambaran variasi hasil antar-fold. Pisahkan hasil validasi dari hasil uji akhir. Angka metrik diisi setelah eksperimen benar-benar dijalankan.
+
+### Hasil prediksi yang diunduh
+
+Hasil Excel memuat No atau nomor baris, metadata yang disertakan pengguna, X1–X8, serta `Prediksi_Kategori`. Sertakan versi model dan penanda bahwa model menggunakan data simulasi. Jika tersedia Target asal, pertahankan dengan nama yang berbeda dari prediksi. Label rujukan tidak ditimpa oleh hasil model.
+
+Mencoba aplikasi pada data pelatihan boleh dilakukan untuk memeriksa alur, tetapi hasilnya tidak dilaporkan sebagai evaluasi terhadap data yang belum pernah dipelajari.
+
+## 12. Pengelolaan model dan data aplikasi
+
+Pelatihan dijalankan melalui tindakan pengguna yang jelas. Model tersimpan dimuat kembali untuk prediksi sehingga perpindahan halaman atau unggahan prediksi tidak memicu pelatihan baru.
+
+Simpan model bersama urutan fitur, pemetaan kategori, parameter, seed, pembagian data, versi pustaka, dan identitas dataset yang digunakan. Setiap model memiliki penanda versi agar hasil prediksi dapat ditelusuri ke model yang membuatnya.
+
+Saat aplikasi dibuka kembali, model dan informasinya dapat dimuat dari penyimpanan. Riwayat penilaian permanen belum diperlukan. Unggahan cukup diproses untuk sesi penggunaan dan hasilnya dapat diunduh. Akses berkas yang memuat identitas sampel dibatasi kepada pihak yang mengerjakan penelitian; untuk demonstrasi luas, tampilan dapat memakai No.
+
+## 13. Pengujian fungsi aplikasi
+
+Pengujian black box mengikuti naskah: berikan masukan, jalankan fungsi, dan periksa apakah keluaran sesuai perilaku yang direncanakan.
+
+| Skenario | Hasil yang diharapkan |
+| --- | --- |
+| Excel lengkap dan valid | Seluruh baris terbaca, jumlah kategori sesuai, dan proses dapat dilanjutkan. |
+| Indikator hilang atau nilainya tidak sah | Kolom dan baris kesalahan ditunjukkan; proses dihentikan. |
+| Urutan kolom berubah | Masukan tetap disusun berdasarkan nama fitur. |
+| Model belum tersedia | Petunjuk menyiapkan model ditampilkan. |
+| Skor yang sama dikirim melalui formulir dan Excel | Model yang sama menghasilkan kategori yang sama. |
+| Hanya Nama, Kelas, atau Umur diubah | Prediksi tetap sama karena fitur tidak berubah. |
+| File memuat Target atau kolom angka tambahan | Kolom tambahan tidak ikut sebagai fitur. |
+| Data Model berbeda dari Data Anak | Pengguna diminta membuat ulang data persiapan. |
+| Pembagian diperiksa | Latih dan uji tidak bertumpang tindih; keempat kelas terdapat di setiap fold. |
+| Hasil diunduh | Jumlah baris dan kategori sama dengan hasil yang ditampilkan. |
+| Aplikasi dibuka kembali | Model tersimpan dapat dimuat atau status model belum tersedia dijelaskan. |
+
+## 14. Penyesuaian yang masih diperlukan pada skripsi
+
+Data siap untuk prototipe tidak berarti seluruh naskah dan klaim penelitian sudah final.
+
+| Bagian | Penyesuaian |
+| --- | --- |
+| Sumber data | Bedakan metadata sampel dengan skor dan Target simulasi. Jangan menyebut skor simulasi sebagai hasil observasi guru. |
+| Delapan indikator | Samakan definisi X1–X8 dengan sheet 8 Indikator. Lengkapi sumber dan rubrik untuk penelitian nyata. |
+| Transformasi | Jelaskan skor 1–4 dan pengkodean target model 0–3. |
+| Pembagian | Jelaskan keputusan 80:20 sebagai skenario prototipe. Jika tetap menjanjikan beberapa skenario, rancang eksperimen tambahannya. |
+| Validasi | Tegaskan lima fold berada pada data latih dan data uji akhir dipisahkan. |
+| Evaluasi multikelas | Jelaskan metrik tiap kelas dan cara merata-ratakan precision, recall, serta F1-score. |
+| Hasil dan pembahasan | Gunakan hasil eksperimen yang diperoleh dan batasi kesimpulan pada data simulasi. |
+| Rumusan dan tujuan | Pastikan tujuan menjawab penerapan model, dashboard, evaluasi, dan hasil klasifikasi. |
+
+Asal label **simulasi** sudah diketahui dan tidak menghambat pembangunan prototipe. Sebelum penelitian lapangan, tetap perlu memastikan rubrik resmi, asal label guru, izin penggunaan data, serta identitas penilaian berulang jika ada. Hal tersebut tidak dapat disimpulkan dari skor dummy.
+
+## 15. Tahap pengerjaan berikutnya
+
+| Tahap | Hasil yang dituju |
+| --- | --- |
+| 1. Persiapan aplikasi | Struktur Streamlit, pembaca Excel, dan pemetaan fitur. |
+| 2. Validasi data | Pemeriksaan masukan, kesesuaian Data Model, dan tampilan distribusi. |
+| 3. Eksperimen XGBoost | Pelatihan, lima putaran validasi, pemilihan parameter, dan evaluasi uji akhir. |
+| 4. Prediksi | Formulir satu penilaian, unggah Excel, tabel hasil, dan unduhan. |
+| 5. Pemeriksaan fungsi | Uji black box dan konsistensi hasil formulir serta Excel. |
+| 6. Dokumentasi | Panduan menjalankan aplikasi, konfigurasi eksperimen, asal label, dan penjelasan hasil. |
+
+Prototipe siap didemonstrasikan ketika Excel valid dapat diproses, model tersedia, prediksi satuan dan banyak baris konsisten, hasil dapat diunduh, serta evaluasi menampilkan hasil pengujian yang benar. Status simulasi harus mudah dipahami pada halaman yang menampilkan kategori.
+
+**Status saat dokumen diperbarui:** dataset, kode kelas, pembagian latih/uji, dan lima fold sudah diperiksa. Aplikasi, pelatihan XGBoost, metrik, dan pengujian fungsi merupakan tahap berikutnya.
+
+## 16. Referensi teknis
+
+- [Parameter XGBoost](https://xgboost.readthedocs.io/en/stable/parameter.html)
+- [Panduan cross-validation scikit-learn](https://scikit-learn.org/stable/modules/cross_validation.html)
+- [Dokumentasi StratifiedKFold](https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.StratifiedKFold.html)
+
+Referensi tersebut mendukung implementasi pemodelan. Dasar rubrik perkembangan anak tetap memerlukan sumber pendidikan yang sesuai dengan instrumen penelitian.
