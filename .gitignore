@@ -1,2 +1,18 @@
-**.docs
-**.xlsx
+# Virtual Environment
+.venv/
+env/
+venv/
+ENV/
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Archives / temporary files
+core.zip
+.DS_Store
+Thumbs.db
+
+# Office / large data documents
+*.docx
