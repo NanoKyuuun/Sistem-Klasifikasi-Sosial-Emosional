@@ -174,9 +174,9 @@ def validate_dataset(df: pd.DataFrame, is_training: bool = False) -> Dict[str, A
                     if count == 0:
                         errors.append(f"Kategori '{cls}' tidak memiliki sampel sama sekali pada dataset.")
                     elif count < 12:
-                        warnings.append(
-                            f"Kategori '{cls}' memiliki {count} sampel (kurang dari 12). "
-                            "Pada Stratified 12-fold cross validation, kategori ini akan didistribusikan sehingga sebagian fold tidak memuat sampel kategori ini."
+                        errors.append(
+                            f"Kategori '{cls}' hanya memiliki {count} sampel (kurang dari 12). "
+                            "Stratified 12-Fold Cross Validation mensyaratkan minimal 12 sampel per kategori agar seluruh 12 fold memiliki perwakilan kelas yang sah."
                         )
     
     # Konversi kolom fitur ke integer jika tidak ada error

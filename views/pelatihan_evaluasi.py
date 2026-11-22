@@ -70,7 +70,7 @@ def render_pelatihan_evaluasi(trainer: XGBoostClassifierTrainer):
     st.markdown(f"""
     <div class="info-banner">
         <strong>📌 Dataset Pelatihan Aktif:</strong> {dataset_title} (Sheet: <code>{sheet_title}</code>) — <strong>{total_rows} Baris</strong><br>
-        • Menggunakan seluruh 110 sampel dengan <strong>Stratified 12-Fold Cross Validation (Out-Of-Fold)</strong> tanpa holdout split 80:20 (selaras naskah BAB IV).
+        • Menggunakan seluruh {total_rows} sampel dengan <strong>Stratified 12-Fold Cross Validation (Out-Of-Fold)</strong> tanpa holdout split 80:20 (selaras naskah BAB IV).
     </div>
     """, unsafe_allow_html=True)
     
@@ -121,10 +121,10 @@ def render_pelatihan_evaluasi(trainer: XGBoostClassifierTrainer):
         )
     with col_btn_final:
         train_final_clicked = st.button(
-            "🚀 2. Latih Model Final (110 Data) & Simpan",
+            f"🚀 2. Latih Model Final ({total_rows} Data) & Simpan",
             type="primary",
             use_container_width=True,
-            help="Menjalankan evaluasi 12-Fold CV, melatih model final pada seluruh 110 sampel, dan menyimpannya ke disk."
+            help=f"Menjalankan evaluasi 12-Fold CV, melatih model final pada seluruh {total_rows} sampel, dan menyimpannya ke disk."
         )
     with col_btn_load:
         load_clicked = st.button("📂 Muat Model Tersimpan", use_container_width=True)
@@ -141,7 +141,13 @@ def render_pelatihan_evaluasi(trainer: XGBoostClassifierTrainer):
     # Persiapan Data Pelatihan
     def prepare_data():
         df_work = active_df.copy()
-        val_train_res = validate_training_dataset(df_work)
+        
+        # Validasi silang sheet jika tersedia Data Anak pembanding
+        df_anak_ref = None
+        if active_dataset and active_dataset.get("sheet_name") == "Data Model":
+            df_anak_ref = active_dataset.get("df_anak")
+            
+        val_train_res = validate_training_dataset(df_work, df_anak=df_anak_ref)
         if not val_train_res["is_valid"]:
             for err in val_train_res["errors"]:
                 st.error(f"❌ {err}")
@@ -155,7 +161,7 @@ def render_pelatihan_evaluasi(trainer: XGBoostClassifierTrainer):
     # Eksekusi CV Saja
     if cv_clicked:
         seed_label = "5 Random State (BAB IV)" if use_multi_seed else f"1 Seed ({random_seed})"
-        with st.spinner(f"Menjalankan Stratified 12-Fold Cross Validation ({seed_label}) pada seluruh 110 data anak..."):
+        with st.spinner(f"Menjalankan Stratified 12-Fold Cross Validation ({seed_label}) pada seluruh {total_rows} data anak..."):
             X, y = prepare_data()
             if X is not None:
                 trainer.params = custom_params
@@ -170,7 +176,7 @@ def render_pelatihan_evaluasi(trainer: XGBoostClassifierTrainer):
     # Eksekusi Pelatihan Model Final
     if train_final_clicked:
         seed_label = "5 Random State" if use_multi_seed else f"1 Seed ({random_seed})"
-        with st.spinner(f"Menjalankan evaluasi 12-Fold ({seed_label}) dan melatih model final pada 110 data anak..."):
+        with st.spinner(f"Menjalankan evaluasi 12-Fold ({seed_label}) dan melatih model final pada {total_rows} data anak..."):
             X, y = prepare_data()
             if X is not None:
                 trainer.params = custom_params
@@ -182,7 +188,7 @@ def render_pelatihan_evaluasi(trainer: XGBoostClassifierTrainer):
                     seeds=RANDOM_STATES if use_multi_seed else [int(random_seed)]
                 )
                 
-                # 2. Latih Model Final pada SELURUH 110 data
+                # 2. Latih Model Final pada SELURUH data
                 source_label = f"{dataset_title} ({sheet_title})"
                 trainer.train_final_model(X, y, dataset_source_info=source_label)
                 
@@ -190,7 +196,7 @@ def render_pelatihan_evaluasi(trainer: XGBoostClassifierTrainer):
                 trainer.save_model()
                 st.session_state["trainer"] = trainer
                 
-                st.success(f"🎉 Model final '{trainer.metadata.get('model_id')}' berhasil dilatih pada seluruh 110 data dan disimpan ke disk!")
+                st.success(f"🎉 Model final '{trainer.metadata.get('model_id')}' berhasil dilatih pada seluruh {total_rows} data dan disimpan ke disk!")
                 st.rerun()
 
     # Tampilkan Hasil Evaluasi jika Tersedia
@@ -277,17 +283,27 @@ def render_pelatihan_evaluasi(trainer: XGBoostClassifierTrainer):
             cm = np.array(s["mean_confusion_matrix"])
             
             fig, ax = plt.subplots(figsize=(5, 4.2))
-            sns.heatmap(
-                cm, annot=True, fmt=".1f" if is_multi else "d", cmap="Blues",
-                xticklabels=CLASS_NAMES, yticklabels=CLASS_NAMES,
-                ax=ax, cbar=False, annot_kws={"size": 11, "weight": "bold"}
-            )
+            if is_multi:
+                sns.heatmap(
+                    cm, annot=True, fmt=".1f", cmap="Blues",
+                    xticklabels=CLASS_NAMES, yticklabels=CLASS_NAMES,
+                    ax=ax, cbar=False, annot_kws={"size": 11, "weight": "bold"}
+                )
+            else:
+                sns.heatmap(
+                    cm.round().astype(int), annot=True, fmt="d", cmap="Blues",
+                    xticklabels=CLASS_NAMES, yticklabels=CLASS_NAMES,
+                    ax=ax, cbar=False, annot_kws={"size": 11, "weight": "bold"}
+                )
             ax.set_xlabel("Prediksi Model XGBoost", fontsize=10, fontweight="bold")
             ax.set_ylabel("Label Target Sebenarnya", fontsize=10, fontweight="bold")
             ax.set_title("Confusion Matrix 4 Kelas", fontsize=11, fontweight="bold")
             st.pyplot(fig)
             plt.close()
-            st.caption("*Catatan: Nilai pecahan merupakan rata-rata prediksi 110 anak lintas 5 kali pengujian random state.*")
+            if is_multi:
+                st.caption(f"*Catatan: Nilai pecahan merupakan rata-rata prediksi {s.get('total_samples', total_rows)} anak lintas 5 kali pengujian random state.*")
+            else:
+                st.caption(f"*Catatan: Prediksi Out-Of-Fold pada seluruh {s.get('total_samples', total_rows)} anak (Single Seed: {seeds_used[0]}).*")
             
         with col_cr:
             st.markdown("#### Laporan Klasifikasi per Kelas")

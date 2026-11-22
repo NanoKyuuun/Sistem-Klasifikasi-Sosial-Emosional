@@ -55,6 +55,7 @@ def render_data_validasi():
                 source_display_name = "Data Penelitian RA Qotrunnada.xlsx"
                 st.info("💡 Memuat **Data Penelitian RA Qotrunnada.xlsx** (dataset penelitian empiris 110 anak sesuai naskah BAB IV).")
             else:
+                st.session_state["active_dataset"] = None
                 st.error(f"❌ Berkas 'Data Penelitian RA Qotrunnada.xlsx' tidak ditemukan.")
                 return
                 
@@ -78,10 +79,12 @@ def render_data_validasi():
                 sheet_names = xl.sheet_names
                 source_display_name = f"Unggahan: {uploaded_file.name}"
             else:
+                st.session_state["active_dataset"] = None
                 st.warning("Silakan unggah berkas Excel terlebih dahulu.")
                 return
     except Exception as e:
         # B09: Penanganan berkas Excel rusak / tidak valid
+        st.session_state["active_dataset"] = None
         st.error(f"❌ Gagal membaca berkas Excel: {str(e)}. Harap pastikan format berkas tidak rusak dan merupakan file Excel (.xlsx / .xls) yang valid.")
         return
     
@@ -95,6 +98,7 @@ def render_data_validasi():
     try:
         df_raw = xl.parse(selected_sheet)
     except Exception as e:
+        st.session_state["active_dataset"] = None
         st.error(f"❌ Gagal membaca sheet '{selected_sheet}': {str(e)}")
         return
     
@@ -111,12 +115,21 @@ def render_data_validasi():
         </div>
         """, unsafe_allow_html=True)
         
+        # Ekstrak df_anak untuk validasi silang sheet jika tersedia
+        df_anak_parsed = None
+        if "Data Anak" in xl.sheet_names and selected_sheet != "Data Anak":
+            try:
+                df_anak_parsed = xl.parse("Data Anak")
+            except Exception:
+                df_anak_parsed = None
+        
         # B02: Sinkronisasikan dataset aktif ke Session State
         st.session_state["active_dataset"] = {
             "source_name": source_display_name,
             "sheet_name": selected_sheet,
             "df": val_res["cleaned_df"],
             "raw_df": df_raw,
+            "df_anak": df_anak_parsed,
             "is_valid": True,
             "is_benchmark": is_benchmark,
             "has_split": "Bagian_Data" in df_raw.columns,
@@ -124,9 +137,11 @@ def render_data_validasi():
         }
         st.caption(f"📌 *Dataset aktif untuk pelatihan:* **{source_display_name}** (Sheet: `{selected_sheet}`) — **{len(df_raw)} Baris**.")
     else:
+        # Reset dataset aktif agar data lama yang tidak valid tidak tertinggal
+        st.session_state["active_dataset"] = None
         st.markdown("""
         <div style="background: #FEE2E2; border-left: 4px solid #EF4444; padding: 14px 18px; border-radius: 8px; margin-bottom: 20px; color: #991B1B;">
-            <strong>❌ Ditemukan Masalah Integritas Data:</strong>
+            <strong>❌ Ditemukan Masalah Integritas Data (Dataset Aktif Dikosongkan):</strong>
         </div>
         """, unsafe_allow_html=True)
         for err in val_res["errors"]:

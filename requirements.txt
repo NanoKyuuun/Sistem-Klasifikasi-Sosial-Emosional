@@ -1,4 +1,5 @@
 # Dependensi Sistem Klasifikasi Sosial-Emosional XGBoost
+# Catatan Reproduksibilitas BAB IV: Eksperimen naskah dijalankan dengan xgboost>=3.1.0/3.2.0, scikit-learn>=1.8.0, pandas>=3.0.0, numpy>=2.0.0
 streamlit>=1.30.0
 xgboost>=1.7.0
 pandas>=2.0.0

@@ -237,6 +237,11 @@ class XGBoostClassifierTrainer:
         # Model ID unik dan metadata lengkap
         model_id = f"XGB-12FOLD-{time.strftime('%Y%m%d-%H%M%S')}"
         is_simulation = "DUMMY" in (dataset_source_info or "").upper() or "SIMULASI" in (dataset_source_info or "").upper()
+        provenance_notes = (
+            "Dataset observasi 110 anak RA Qotrunnada (selaras BAB IV skripsi Wafiqotissalamah)"
+            if not is_simulation else
+            "Dataset simulasi acuan blueprint prototipe 110 anak"
+        )
         
         self.metadata = {
             "model_id": model_id,
@@ -248,6 +253,7 @@ class XGBoostClassifierTrainer:
             "cv_n_splits": DEFAULT_N_SPLITS,
             "evaluation_type": "Stratified 12-Fold Cross-Validation (Out-of-Fold)",
             "dataset_source": dataset_source_info or "Data Penelitian RA Qotrunnada.xlsx",
+            "data_provenance_notes": provenance_notes,
             "trained_at": time.strftime("%Y-%m-%d %H:%M:%S"),
             "cv_summary": self.cv_summary,
             "is_simulation_model": is_simulation,
@@ -327,6 +333,23 @@ class XGBoostClassifierTrainer:
                     temp_feat_imp = data.get("feature_importance")
                     if temp_meta and "params" in temp_meta:
                         temp_params = temp_meta["params"]
+            
+            # Verifikasi integritas & kompatibilitas metadata arsitektur
+            if temp_meta is not None:
+                meta_features = temp_meta.get("features")
+                meta_classes = temp_meta.get("classes")
+                meta_splits = temp_meta.get("cv_n_splits")
+                
+                # Cek kompatibilitas fitur dan kelas
+                if meta_features != FEATURE_COLS:
+                    warnings.warn(f"Metadata features {meta_features} tidak sesuai dengan FEATURE_COLS {FEATURE_COLS}.")
+                    return False
+                if meta_classes != CLASS_NAMES:
+                    warnings.warn(f"Metadata classes {meta_classes} tidak sesuai dengan CLASS_NAMES {CLASS_NAMES}.")
+                    return False
+                if meta_splits is not None and int(meta_splits) != DEFAULT_N_SPLITS:
+                    warnings.warn(f"Metadata cv_n_splits ({meta_splits}) tidak sesuai standar sistem ({DEFAULT_N_SPLITS}).")
+                    return False
             
             self.model = temp_model
             self.metadata = temp_meta

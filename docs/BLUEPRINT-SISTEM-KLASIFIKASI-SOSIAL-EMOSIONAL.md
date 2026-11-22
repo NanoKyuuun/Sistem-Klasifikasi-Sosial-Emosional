@@ -3,8 +3,8 @@
 **Konteks penelitian:** RA Qotrunnada  
 **Algoritma:** Extreme Gradient Boosting (XGBoost)  
 **Aplikasi:** Dashboard Streamlit  
-**Diperbarui:** 26 September 2026  
-**Status:** Acuan pengembangan prototipe dengan skor dan label simulasi. Model belum dilatih dan hasil akurasi belum tersedia.
+**Diperbarui:** 22 November 2026  
+**Status:** Diselaraskan 100% dengan naskah BAB IV dan eksperimen Google Colab skripsi (Stratified 12-Fold Cross-Validation Out-Of-Fold pada seluruh 110 data anak dengan 5 Random State). Model final dilatih pada seluruh 110 data tanpa holdout split 80:20.
 
 ## 1. Gambaran sistem
 
@@ -21,21 +21,21 @@ Tujuan tahap ini adalah menguji alur aplikasi dan evaluasi dengan data yang jela
 | Acuan | Fungsi |
 | --- | --- |
 | `SKRIPSI.docx` | Acuan tujuan, delapan indikator, XGBoost, evaluasi, dan dashboard Streamlit. |
-| `DATA-DUMMY-SIMULASI-110-ANAK.xlsx` | Dataset prototipe yang dilengkapi kode target, pembagian latih/uji, dan lima fold. |
+| DATA-DUMMY-SIMULASI-110-ANAK.xlsx | Dataset acuan blueprint dengan kode target dan pembagian Stratified 12-Fold Cross Validation. |
 | `Data Penelitian Anak RA Qotrunnada(1).xlsx` | Sumber Nama, Kelas, dan Umur yang dipasangkan melalui No. |
 | Sheet `8 Indikator` | Acuan definisi dan urutan X1–X8. |
 
-Keputusan untuk implementasi awal:
+Keputusan metodologi final (Revisi 22 November 2026):
 
 - Dataset berisi **110 baris** dengan delapan fitur X1–X8 bernilai bulat 1–4.
-- Jumlah kategori diacak dalam rentang **10–40 per kategori**, dengan total 110.
-- Distribusi yang dihasilkan adalah **BB 30, MB 14, BSH 39, dan BSB 27**.
-- Asal label simulasi sudah diketahui: jumlah delapan skor dengan batas kategori pada bagian 5.
-- Pembagian stratified menghasilkan **88 data latih dan 22 data uji**. Pembagian ini menjaga perwakilan setiap kategori sebisa mungkin.
-- **Stratified 5-fold cross-validation diterapkan pada 88 data latih**. Data uji akhir disisihkan dari pemilihan pengaturan model.
-- Prototipe awal berjalan secara lokal melalui Streamlit. Kebutuhan akun dan akses daring dapat ditentukan setelah alur utama berjalan.
+- Distribusi kelas empiris: **BB 30, MB 14, BSH 39, dan BSB 27**.
+- **Tidak lagi menggunakan split holdout 80:20 (88 latih / 22 uji)**. Seluruh 110 sampel dievaluasi secara menyeluruh.
+- **Stratified 12-Fold Cross-Validation (Out-Of-Fold)** diterapkan pada seluruh 110 data anak. Nilai $K=12$ merupakan hasil optimasi empiris ($K=2$ s.d. $14$) pada skripsi BAB IV.
+- **Evaluasi 5 Random State** (`[2026, 42, 123, 2025, 20260926]`) dijalankan untuk menjamin kestabilan dan reproduksibilitas metrik evaluasi.
+- **Model final dilatih pada seluruh 110 data anak** dan disimpan untuk inferensi prediksi (single maupun batch).
+- Prototipe berjalan secara lokal dan interaktif melalui Streamlit.
 
-Rasio 80:20 merupakan keputusan teknis prototipe. Naskah menyebut beberapa skenario pembagian, tetapi belum menetapkan rasio tertentu. Uraian metode perlu diselaraskan ketika rancangan penelitian final ditetapkan.
+*Catatan Historis:* Pada fase eksplorasi prototipe awal (September 2026), sempat digunakan skema 80:20 (88 latih, 22 uji) dan 5-Fold CV. Skema tersebut kini telah sepenuhnya digantikan oleh metodologi definitif Stratified 12-Fold OOF 110 sampel sesuai naskah BAB IV.
 
 ## 3. Tujuan, pengguna, dan cakupan
 
@@ -184,49 +184,56 @@ Jika pembaca Excel tidak memperoleh nilai hasil rumus Target, aplikasi meminta p
 
 ## 9. Pembagian data dan validasi
 
-### Data latih dan data uji akhir
+### Metodologi Validasi: Stratified 12-Fold Cross-Validation (Out-Of-Fold)
 
-| Kategori | Seluruh data | Latih | Uji akhir |
-| --- | ---: | ---: | ---: |
-| BB | 30 | 24 | 6 |
-| MB | 14 | 11 | 3 |
-| BSH | 39 | 31 | 8 |
-| BSB | 27 | 22 | 5 |
-| **Total** | **110** | **88** | **22** |
+Pada metodologi final skripsi (BAB IV), **tidak digunakan pembagian split 80:20 (88 latih / 22 uji akhir)**. Seluruh 110 sampel diikutsertakan dalam proses validasi silang (cross-validation) untuk mencegah bias partisi dan memaksimalkan penggunaan data terbatas.
 
-Data latih dipakai untuk mempelajari pola dan memilih pengaturan model. Data uji akhir dipakai setelah pemilihan selesai. Pengaturan model tidak dipilih berdasarkan skor tertinggi pada 22 data uji akhir.
+| Kategori | Jumlah Sampel | Persentase | Representasi per Fold |
+| --- | ---: | ---: | --- |
+| BB | 30 | 27.27% | 2–3 sampel / fold |
+| MB | 14 | 12.73% | 1–2 sampel / fold |
+| BSH | 39 | 35.45% | 3–4 sampel / fold |
+| BSB | 27 | 24.55% | 2–3 sampel / fold |
+| **Total** | **110** | **100.0%** | **9–10 sampel / fold** |
 
-### Lima bagian validasi dari data latih
+### Struktur 12 Bagian Validasi (K=12)
 
-| Fold validasi | BB | MB | BSH | BSB | Total validasi |
-| --- | ---: | ---: | ---: | ---: | ---: |
-| 1 | 4 | 2 | 7 | 5 | 18 |
-| 2 | 5 | 2 | 6 | 5 | 18 |
-| 3 | 5 | 3 | 6 | 4 | 18 |
-| 4 | 5 | 2 | 6 | 4 | 17 |
-| 5 | 5 | 2 | 6 | 4 | 17 |
-| **Total** | **24** | **11** | **31** | **22** | **88** |
+Dataset 110 anak dibagi menjadi 12 fold terstratifikasi:
+- Fold 1 s.d. 2: masing-masing 10 sampel validasi (100 sampel latih).
+- Fold 3 s.d. 12: masing-masing 9 sampel validasi (101 sampel latih).
+- Total sampel validasi: 2 × 10 + 10 × 9 = 110 sampel (tepat 100% data anak).
 
-Pada putaran pertama, fold 1 digunakan untuk validasi dan empat fold lainnya untuk melatih model. Proses bergantian sampai semua fold pernah menjadi bagian validasi. Setiap baris data latih menjadi data validasi tepat sekali dalam lima putaran. Fold_Validasi = 0 menandai data uji akhir yang tidak ikut proses ini.
+Pada setiap iterasi fold:
+1. 11 fold (100–101 data) digunakan untuk melatih model XGBoost.
+2. 1 fold yang disisihkan (9–10 data) diprediksi sebagai *out-of-fold validation*.
+3. Setelah 12 iterasi selesai, seluruh 110 sampel memiliki tepat satu prediksi out-of-fold (OOF).
 
-Pembagian tersimpan dibuat dengan scikit-learn 1.8.0. Data latih/uji memakai `train_test_split`, `test_size=0.2`, `stratify=Target`, dan `random_state=20260926`. Validasi memakai `StratifiedKFold(n_splits=5, shuffle=True, random_state=20260926)`. Untuk mereproduksi pembagian persis sama, gunakan penanda Data Model. Jika membuat ulang, pertahankan urutan baris, sumber label, dan pengaturan tersebut.
+### Evaluasi Stabilitas dengan 5 Random State
 
-Keempat kategori sudah terdapat pada setiap fold. Namun jumlah data tetap kecil: MB hanya memiliki 2–3 contoh per bagian validasi dan 3 pada data uji akhir. Laporkan jumlah contoh bersama metriknya agar pembaca memahami batas hasil.
+Untuk menguji stabilitas performa terhadap inisialisasi partisi data, proses 12-Fold diulang pada 5 Random State berbeda:
+[2026, 42, 123, 2025, 20260926] (total 12 × 5 = 60 iterasi pelatihan).
+
+Matriks evaluasi (Akurasi, Precision, Recall, Macro F1, dan Confusion Matrix) dihitung pada setiap seed OOF, lalu dirata-ratakan untuk menghasilkan estimasi performa yang stabil dan selaras dengan BAB IV:
+- **Akurasi OOF Rerata:** 73.27% ± 2.77% (Gain +37.82% terhadap Baseline 35.45%)
+- **Macro F1 OOF Rerata:** 66.43% ± 2.05% (Gain +53.34% terhadap Baseline 13.09%)
 
 ## 10. Persiapan dan pelatihan XGBoost
 
 Alurnya mengikuti pemilihan data, pembersihan, transformasi, pemodelan, dan evaluasi dalam naskah.
 
-| Tahap | Keputusan prototipe |
+| Tahap | Keputusan Final Sistem |
 | --- | --- |
-| Pemilihan fitur | X = X1–X8, dengan urutan tetap. |
+| Pemilihan fitur | X = X1–X8 (8 indikator STPPA), dengan urutan tetap. |
 | Label | y = Target_XGBoost; BB=0, MB=1, BSH=2, BSB=3. |
-| Kelengkapan | Data awal tidak memerlukan pengisian nilai kosong. Data baru yang tidak lengkap diperiksa terlebih dahulu. |
-| Bentuk tugas | Klasifikasi empat kelas dengan XGBoost berbasis pohon. |
-| Konfigurasi tugas | `objective=multi:softprob`, empat kelas (`num_class=4`); hasil dipetakan kembali ke BB–BSB. |
-| Parameter model | Jumlah pohon, kedalaman pohon, dan laju pembelajaran dicatat untuk setiap percobaan. Nilai terbaik belum ditentukan. |
-| Pemilihan parameter | Menggunakan validasi data latih. Macro F1 dapat menjadi ukuran utama, disertai metrik lain dalam skripsi. |
-| Model akhir | Latih kembali pada 88 data latih setelah parameter dipilih, lalu evaluasi pada 22 data uji akhir. |
+| Kelengkapan | Data awal tidak memerlukan pengisian nilai kosong. Validasi menolak data jika ada nilai kosong, non-numerik, atau di luar rentang 1–4. |
+| Batasan Kelas | Validasi menolak dataset jika ada kelas dengan jumlah sampel < 12 untuk menjamin keterwakilan di 12 fold. |
+| Bentuk tugas | Klasifikasi multi-kelas dengan XGBoost berbasis pohon (*gradient boosted decision trees*). |
+| Konfigurasi tugas | objective=multi:softprob, empat kelas (
+um_class=4), eval_metric=mlogloss; hasil probabilitas dipetakan kembali ke label BB–BSB. |
+| Parameter acuan | 
+_estimators=100, max_depth=4, learning_rate=0.10, subsample=1.0, colsample_bytree=1.0. |
+| Skema Evaluasi | Stratified 12-Fold Cross-Validation OOF pada 110 data dengan 5 Random State. |
+| Model final operasional | Dilatih pada **seluruh 110 data anak** menggunakan parameter optimal, lalu disimpan ke disk (models/xgboost_model.json dan models/xgboost_model_metadata.json) untuk melayani inferensi prediksi single & batch. |
 
 Target, kode target, total skor, No, dan penanda pembagian tidak boleh menjadi fitur. Total skor membentuk langsung label simulasi; memasukkannya akan mengubah tugas yang semula memakai delapan indikator. Pilih fitur melalui daftar nama kolom yang ditetapkan, bukan mengambil seluruh kolom numerik.
 

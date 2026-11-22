@@ -1,6 +1,6 @@
 """
 Modul Pengelolaan Dataset dan Pembuatan Data Simulasi
-Menghasilkan 6 sheet Excel acuan blueprint, pembagian stratified 80:20, dan 5-fold cross validation.
+Menghasilkan 6 sheet Excel acuan blueprint dan Stratified 12-Fold Cross Validation.
 """
 
 import os
