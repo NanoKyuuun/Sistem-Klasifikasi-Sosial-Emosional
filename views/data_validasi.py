@@ -30,8 +30,8 @@ def render_data_validasi():
     data_source_opt = st.radio(
         "Pilih Sumber Dataset:",
         options=[
+            "Dataset Penelitian RA Qotrunnada (110 Anak - Acuan BAB IV & Colab)",
             "Dataset Simulasi Standar (110 Anak - 6 Sheet Acuan)",
-            "Dataset Penelitian Asli RA Qotrunnada (Data Penelitian Anak RA Qotrunnada.xlsx)",
             "Unggah Berkas Excel Baru (.xlsx)"
         ],
         horizontal=True
@@ -42,9 +42,23 @@ def render_data_validasi():
     is_benchmark = False
     source_display_name = ""
     
-    # B09 & B13: Penanganan pembacaan Excel aman dengan path absolut
+    # Penanganan pembacaan Excel aman dengan path absolut
     try:
-        if data_source_opt == "Dataset Simulasi Standar (110 Anak - 6 Sheet Acuan)":
+        if data_source_opt == "Dataset Penelitian RA Qotrunnada (110 Anak - Acuan BAB IV & Colab)":
+            source_path = BASE_DIR / "Data Penelitian RA Qotrunnada.xlsx"
+            if not source_path.exists():
+                source_path = BASE_DIR / "data_revisi" / "Data Penelitian RA Qotrunnada.xlsx"
+            if source_path.exists():
+                excel_file = str(source_path)
+                xl = pd.ExcelFile(excel_file)
+                sheet_names = xl.sheet_names
+                source_display_name = "Data Penelitian RA Qotrunnada.xlsx"
+                st.info("💡 Memuat **Data Penelitian RA Qotrunnada.xlsx** (dataset penelitian empiris 110 anak sesuai naskah BAB IV).")
+            else:
+                st.error(f"❌ Berkas 'Data Penelitian RA Qotrunnada.xlsx' tidak ditemukan.")
+                return
+                
+        elif data_source_opt == "Dataset Simulasi Standar (110 Anak - 6 Sheet Acuan)":
             benchmark_path = BASE_DIR / "DATA-DUMMY-SIMULASI-110-ANAK.xlsx"
             if not benchmark_path.exists():
                 sheets = generate_benchmark_simulation_dataset()
@@ -54,18 +68,7 @@ def render_data_validasi():
             sheet_names = xl.sheet_names
             is_benchmark = True
             source_display_name = "DATA-DUMMY-SIMULASI-110-ANAK.xlsx"
-            st.info("💡 Memuat **DATA-DUMMY-SIMULASI-110-ANAK.xlsx** yang memuat 6 sheet acuan blueprint penelitian.")
-            
-        elif data_source_opt == "Dataset Penelitian Asli RA Qotrunnada (Data Penelitian Anak RA Qotrunnada.xlsx)":
-            source_path = BASE_DIR / "Data Penelitian Anak RA Qotrunnada.xlsx"
-            if source_path.exists():
-                excel_file = str(source_path)
-                xl = pd.ExcelFile(excel_file)
-                sheet_names = xl.sheet_names
-                source_display_name = "Data Penelitian Anak RA Qotrunnada.xlsx"
-            else:
-                st.error(f"❌ Berkas '{source_path.name}' tidak ditemukan di folder proyek.")
-                return
+            st.info("💡 Memuat **DATA-DUMMY-SIMULASI-110-ANAK.xlsx** yang memuat 6 sheet acuan blueprint simulasi.")
                 
         else:
             uploaded_file = st.file_uploader("Unggah Berkas Excel (.xlsx, .xls)", type=["xlsx", "xls"])

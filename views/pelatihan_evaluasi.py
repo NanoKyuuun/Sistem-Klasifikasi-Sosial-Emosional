@@ -1,5 +1,6 @@
 """
-Halaman Pelatihan dan Evaluasi: Eksperimen XGBoost, 5-Fold Cross Validation, dan Evaluasi Data Uji Akhir
+Halaman Pelatihan dan Evaluasi: Eksperimen XGBoost, Stratified 12-Fold Cross Validation (OOF),
+Pengujian 5 Random State (BAB IV), dan Pelatihan Model Final pada 110 Data Anak.
 """
 
 import os
@@ -9,11 +10,10 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
-from sklearn.model_selection import train_test_split, StratifiedKFold
 
 from core.constants import (
     BASE_DIR, FEATURE_COLS, CLASS_NAMES, DEFAULT_RANDOM_STATE, DEFAULT_XGB_PARAMS,
-    DEFAULT_TEST_SIZE, DEFAULT_N_SPLITS
+    DEFAULT_N_SPLITS, RANDOM_STATES
 )
 from core.dataset import generate_benchmark_simulation_dataset
 from core.validator import validate_training_dataset
@@ -25,41 +25,52 @@ def render_pelatihan_evaluasi(trainer: XGBoostClassifierTrainer):
     st.markdown("""
     <div class="app-header">
         <h1>⚙️ Pelatihan dan Evaluasi Model XGBoost</h1>
-        <p>Eksperimen hyperparameter, Stratified 5-Fold Cross Validation pada data latih, dan evaluasi final pada data uji terisolasi.</p>
+        <p>Eksperimen hyperparameter, Stratified 12-Fold Cross Validation (Out-of-Fold) pada 110 data anak, evaluasi 5 Random State (BAB IV), dan pelatihan model final.</p>
     </div>
     """, unsafe_allow_html=True)
     
-    # B02 & A02: Deteksi Dataset Aktif dari Session State
+    # Deteksi Dataset Aktif dari Session State atau Default Acuan
     active_dataset = st.session_state.get("active_dataset")
     
     if active_dataset is not None and active_dataset.get("is_valid"):
         dataset_title = active_dataset.get("source_name", "Dataset Aktif")
-        sheet_title = active_dataset.get("sheet_name", "Data Model")
+        sheet_title = active_dataset.get("sheet_name", "Data Anak")
         active_df = active_dataset.get("df")
-        raw_df = active_dataset.get("raw_df")
         total_rows = active_dataset.get("total_rows", len(active_df))
-        has_split = active_dataset.get("has_split", False)
-        is_benchmark = active_dataset.get("is_benchmark", False)
     else:
-        # Fallback default ke benchmark
+        # Prioritas 1: Gunakan Data Penelitian RA Qotrunnada.xlsx jika tersedia (acuan BAB IV & Colab)
+        research_path = BASE_DIR / "Data Penelitian RA Qotrunnada.xlsx"
+        fallback_path = BASE_DIR / "data_revisi" / "Data Penelitian RA Qotrunnada.xlsx"
         benchmark_path = BASE_DIR / "DATA-DUMMY-SIMULASI-110-ANAK.xlsx"
-        if not benchmark_path.exists():
-            sheets = generate_benchmark_simulation_dataset()
+        
+        target_path = None
+        if research_path.exists():
+            target_path = research_path
+            dataset_title = "Data Penelitian RA Qotrunnada.xlsx (Acuan BAB IV & Colab)"
+        elif fallback_path.exists():
+            target_path = fallback_path
+            dataset_title = "Data Penelitian RA Qotrunnada.xlsx (data_revisi)"
+        elif benchmark_path.exists():
+            target_path = benchmark_path
+            dataset_title = "DATA-DUMMY-SIMULASI-110-ANAK.xlsx (Bawaan)"
         else:
-            sheets = pd.read_excel(str(benchmark_path), sheet_name=None)
+            sheets = generate_benchmark_simulation_dataset()
+            target_path = None
+            raw_df = sheets["Data Anak"]
+            dataset_title = "Dataset Simulasi Standar (Generated)"
             
-        raw_df = sheets["Data Model"]
+        if target_path is not None:
+            xl = pd.ExcelFile(str(target_path))
+            sheet_title = "Data Anak" if "Data Anak" in xl.sheet_names else ("Data Model" if "Data Model" in xl.sheet_names else xl.sheet_names[0])
+            raw_df = xl.parse(sheet_title)
+            
         active_df = raw_df.copy()
-        dataset_title = "DATA-DUMMY-SIMULASI-110-ANAK.xlsx (Bawaan)"
-        sheet_title = "Data Model"
         total_rows = len(active_df)
-        has_split = True
-        is_benchmark = True
         
     st.markdown(f"""
     <div class="info-banner">
         <strong>📌 Dataset Pelatihan Aktif:</strong> {dataset_title} (Sheet: <code>{sheet_title}</code>) — <strong>{total_rows} Baris</strong><br>
-        {'• Memuat pembagian baku Latih (88) / Uji (22) dan 5-Fold validasi.' if has_split else '• Dataset belum memuat kolom Bagian_Data; pembagian Stratified 80:20 akan diterapkan otomatis.'}
+        • Menggunakan seluruh 110 sampel dengan <strong>Stratified 12-Fold Cross Validation (Out-Of-Fold)</strong> tanpa holdout split 80:20 (selaras naskah BAB IV).
     </div>
     """, unsafe_allow_html=True)
     
@@ -75,9 +86,14 @@ def render_pelatihan_evaluasi(trainer: XGBoostClassifierTrainer):
         subsample = st.slider("Subsample Data:", min_value=0.5, max_value=1.0, value=float(trainer.params.get("subsample", 1.0)), step=0.1)
     with col_p3:
         colsample_bytree = st.slider("Colsample by Tree:", min_value=0.5, max_value=1.0, value=float(trainer.params.get("colsample_bytree", 1.0)), step=0.1)
-        # B08: Seed dibatasi antara 0 dan 2**32 - 1
-        random_seed = st.number_input("Random State Seed:", min_value=0, max_value=(2**32)-1, value=int(trainer.params.get("random_state", DEFAULT_RANDOM_STATE)), step=1)
+        random_seed = st.number_input("Random State Seed Utama:", min_value=0, max_value=(2**32)-1, value=int(trainer.params.get("random_state", DEFAULT_RANDOM_STATE)), step=1)
         
+    use_multi_seed = st.checkbox(
+        "Gunakan Evaluasi 5 Random State (2026, 42, 123, 2025, 20260926) sesuai Eksperimen BAB IV",
+        value=True,
+        help="Menjalankan 12-Fold CV sebanyak 5 kali dengan seed berbeda (total 60 proses fold) untuk menguji stabilitas model."
+    )
+    
     custom_params = {
         "n_estimators": int(n_estimators),
         "max_depth": int(max_depth),
@@ -90,16 +106,26 @@ def render_pelatihan_evaluasi(trainer: XGBoostClassifierTrainer):
         "eval_metric": "mlogloss"
     }
     
-    # A03: Pemisahan Tahap Eksperimen Cross Validation vs Penetapan Model Akhir
+    # 2. Eksekusi Eksperimen & Pelatihan Model
     st.markdown("<br>", unsafe_allow_html=True)
     st.markdown("### 🧪 2. Eksekusi Eksperimen & Pelatihan Model")
     
     col_btn_cv, col_btn_final, col_btn_load = st.columns([1.5, 1.5, 1])
     
     with col_btn_cv:
-        cv_clicked = st.button("🔄 1. Uji Validasi 5-Fold (CV Saja)", type="secondary", use_container_width=True, help="Jalankan Stratified 5-Fold pada data latih untuk mengamati stabilitas parameter tanpa menyentuh data uji.")
+        cv_clicked = st.button(
+            "🔄 1. Jalankan Evaluasi 12-Fold OOF",
+            type="secondary",
+            use_container_width=True,
+            help="Menjalankan Stratified 12-Fold CV out-of-fold untuk mengukur performa tanpa melatih model final."
+        )
     with col_btn_final:
-        train_final_clicked = st.button("🚀 2. Latih Model Final & Simpan", type="primary", use_container_width=True, help="Latih model final pada seluruh data latih, evaluasi pada data uji akhir, dan simpan ke sistem.")
+        train_final_clicked = st.button(
+            "🚀 2. Latih Model Final (110 Data) & Simpan",
+            type="primary",
+            use_container_width=True,
+            help="Menjalankan evaluasi 12-Fold CV, melatih model final pada seluruh 110 sampel, dan menyimpannya ke disk."
+        )
     with col_btn_load:
         load_clicked = st.button("📂 Muat Model Tersimpan", use_container_width=True)
         
@@ -107,7 +133,7 @@ def render_pelatihan_evaluasi(trainer: XGBoostClassifierTrainer):
     if load_clicked:
         success = trainer.load_model()
         if success:
-            st.success(f"✅ Model '{trainer.metadata.get('model_id', 'XGBoost')}' dan metadata evaluasi berhasil dimuat dari penyimpanan lokal.")
+            st.success(f"✅ Model '{trainer.metadata.get('model_id', 'XGBoost')}' dan metadata evaluasi berhasil dimuat dari disk.")
             st.rerun()
         else:
             st.error("❌ Berkas model belum ditemukan di direktori `models/` atau file rusak. Silakan lakukan pelatihan ulang.")
@@ -115,217 +141,201 @@ def render_pelatihan_evaluasi(trainer: XGBoostClassifierTrainer):
     # Persiapan Data Pelatihan
     def prepare_data():
         df_work = active_df.copy()
-        
-        # Jika belum ada pembagian Latih/Uji, lakukan Stratified Split 80:20
-        if "Bagian_Data" not in df_work.columns:
-            train_idx, test_idx = train_test_split(
-                df_work.index,
-                test_size=DEFAULT_TEST_SIZE,
-                stratify=df_work["Target"],
-                random_state=int(random_seed)
-            )
-            df_work["Bagian_Data"] = "Latih"
-            df_work.loc[test_idx, "Bagian_Data"] = "Uji"
-            df_work["Fold_Validasi"] = 0
-            
-            # Buat 5 fold pada data latih
-            skf = StratifiedKFold(n_splits=DEFAULT_N_SPLITS, shuffle=True, random_state=int(random_seed))
-            df_train_sub = df_work.loc[train_idx]
-            for fold_num, (_, val_idx_rel) in enumerate(skf.split(df_train_sub, df_train_sub["Target"]), 1):
-                real_indices = df_train_sub.index[val_idx_rel]
-                df_work.loc[real_indices, "Fold_Validasi"] = fold_num
-                
-        # B03: Validasi Integritas sebelum pelatihan
         val_train_res = validate_training_dataset(df_work)
         if not val_train_res["is_valid"]:
             for err in val_train_res["errors"]:
                 st.error(f"❌ {err}")
-            return None, None, None, None, None
+            return None, None
             
-        train_df = df_work[df_work["Bagian_Data"] == "Latih"]
-        test_df = df_work[df_work["Bagian_Data"] == "Uji"]
-        
-        X_tr = train_df[FEATURE_COLS]
-        y_tr = train_df["Target_XGBoost"]
-        X_te = test_df[FEATURE_COLS] if not test_df.empty else None
-        y_te = test_df["Target_XGBoost"] if not test_df.empty else None
-        folds = train_df["Fold_Validasi"] if "Fold_Validasi" in train_df.columns else None
-        
-        return X_tr, y_tr, X_te, y_te, folds
+        clean_df = val_train_res["cleaned_df"]
+        X = clean_df[FEATURE_COLS]
+        y = clean_df["Target_XGBoost"]
+        return X, y
 
     # Eksekusi CV Saja
     if cv_clicked:
-        with st.spinner("Menjalankan Stratified 5-Fold Cross Validation pada data latih..."):
-            X_train, y_train, X_test, y_test, fold_series = prepare_data()
-            if X_train is not None:
+        seed_label = "5 Random State (BAB IV)" if use_multi_seed else f"1 Seed ({random_seed})"
+        with st.spinner(f"Menjalankan Stratified 12-Fold Cross Validation ({seed_label}) pada seluruh 110 data anak..."):
+            X, y = prepare_data()
+            if X is not None:
                 trainer.params = custom_params
                 cv_results, cv_summary = trainer.run_stratified_cv(
-                    X_train, y_train, n_splits=5, random_state=int(random_seed), fold_series=fold_series
+                    X, y, n_splits=DEFAULT_N_SPLITS, random_state=int(random_seed),
+                    run_multi_seed=use_multi_seed,
+                    seeds=RANDOM_STATES if use_multi_seed else [int(random_seed)]
                 )
                 st.session_state["trainer"] = trainer
-                st.success(f"✅ Eksperimen 5-Fold Selesai! Mean Accuracy: {cv_summary['mean_accuracy']*100:.2f}% (± {cv_summary['std_accuracy']*100:.2f}%)")
+                st.success(f"✅ Evaluasi 12-Fold Selesai! Mean OOF Accuracy: {cv_summary['mean_accuracy']*100:.2f}% (± {cv_summary['std_accuracy']*100:.2f}%)")
 
     # Eksekusi Pelatihan Model Final
     if train_final_clicked:
-        with st.spinner("Melatih model final dan mengevaluasi data uji akhir..."):
-            X_train, y_train, X_test, y_test, fold_series = prepare_data()
-            if X_train is not None:
+        seed_label = "5 Random State" if use_multi_seed else f"1 Seed ({random_seed})"
+        with st.spinner(f"Menjalankan evaluasi 12-Fold ({seed_label}) dan melatih model final pada 110 data anak..."):
+            X, y = prepare_data()
+            if X is not None:
                 trainer.params = custom_params
                 
-                # 1. Jalankan 5-Fold CV
+                # 1. Jalankan Evaluasi 12-Fold
                 cv_results, cv_summary = trainer.run_stratified_cv(
-                    X_train, y_train, n_splits=5, random_state=int(random_seed), fold_series=fold_series
+                    X, y, n_splits=DEFAULT_N_SPLITS, random_state=int(random_seed),
+                    run_multi_seed=use_multi_seed,
+                    seeds=RANDOM_STATES if use_multi_seed else [int(random_seed)]
                 )
                 
-                # 2. Latih Model Final & Evaluasi Data Uji
+                # 2. Latih Model Final pada SELURUH 110 data
                 source_label = f"{dataset_title} ({sheet_title})"
-                final_eval = trainer.train_final_model(X_train, y_train, X_test, y_test, dataset_source_info=source_label)
+                trainer.train_final_model(X, y, dataset_source_info=source_label)
                 
-                # 3. Simpan Model ke Disk secara aman
+                # 3. Simpan Model & Metadata
                 trainer.save_model()
                 st.session_state["trainer"] = trainer
                 
-                st.success(f"🎉 Model final '{trainer.metadata.get('model_id')}' berhasil dilatih dan disimpan ke disk!")
+                st.success(f"🎉 Model final '{trainer.metadata.get('model_id')}' berhasil dilatih pada seluruh 110 data dan disimpan ke disk!")
                 st.rerun()
 
     # Tampilkan Hasil Evaluasi jika Tersedia
-    if trainer.cv_results is not None:
+    if trainer.cv_summary is not None:
+        s = trainer.cv_summary
+        seeds_used = s.get("seeds", [DEFAULT_RANDOM_STATE])
+        is_multi = len(seeds_used) > 1
+        
         st.markdown("<br>", unsafe_allow_html=True)
         st.markdown("---")
         
-        # 2. Hasil Stratified 5-Fold Cross Validation
-        st.markdown("### 🔄 Hasil Stratified 5-Fold Cross Validation (Data Latih)")
+        eval_title = "Stratified 12-Fold Cross Validation (Rata-rata 5 Random State)" if is_multi else "Stratified 12-Fold Cross Validation (Single Seed)"
+        st.markdown(f"### 🔄 Hasil Evaluasi {eval_title}")
+        st.caption(f"Evaluasi Out-Of-Fold (OOF) dihitung dari seluruh **{s.get('total_samples', 110)} baris data**, menguji setiap data tepat 1 kali per seed.")
         
-        # Tabel per Fold
-        fold_table_data = []
-        for r in trainer.cv_results:
-            fold_table_data.append({
-                "Fold": f"Fold {r['fold']}",
-                "Sampel Latih": r["train_samples"],
-                "Sampel Validasi": r["val_samples"],
-                "Accuracy": f"{r['accuracy']*100:.2f}%",
-                "Macro Precision": f"{r['precision_macro']*100:.2f}%",
-                "Macro Recall": f"{r['recall_macro']*100:.2f}%",
-                "Macro F1-Score": f"{r['f1_macro']*100:.2f}%"
-            })
-            
-        fold_df = pd.DataFrame(fold_table_data)
-        st.dataframe(fold_df, use_container_width=True)
-        
-        # Ringkasan Mean & Std
-        s = trainer.cv_summary
-        if s:
-            col_s1, col_s2, col_s3, col_s4 = st.columns(4)
-            with col_s1:
-                st.metric("Mean Accuracy", f"{s['mean_accuracy']*100:.2f}%", f"± {s['std_accuracy']*100:.2f}%")
-            with col_s2:
-                st.metric("Mean Macro Precision", f"{s['mean_precision_macro']*100:.2f}%", f"± {s['std_precision_macro']*100:.2f}%")
-            with col_s3:
-                st.metric("Mean Macro Recall", f"{s['mean_recall_macro']*100:.2f}%", f"± {s['std_recall_macro']*100:.2f}%")
-            with col_s4:
-                st.metric("Mean Macro F1", f"{s['mean_f1_macro']*100:.2f}%", f"± {s['std_f1_macro']*100:.2f}%")
+        # 4 KPI Metrik Utama
+        col_s1, col_s2, col_s3, col_s4 = st.columns(4)
+        with col_s1:
+            st.metric("OOF Accuracy", f"{s['mean_accuracy']*100:.2f}%", f"± {s['std_accuracy']*100:.2f}%" if is_multi else None)
+        with col_s2:
+            st.metric("OOF Macro Precision", f"{s['mean_precision_macro']*100:.2f}%", f"± {s['std_precision_macro']*100:.2f}%" if is_multi else None)
+        with col_s3:
+            st.metric("OOF Macro Recall", f"{s['mean_recall_macro']*100:.2f}%", f"± {s['std_recall_macro']*100:.2f}%" if is_multi else None)
+        with col_s4:
+            st.metric("OOF Macro F1-Score", f"{s['mean_f1_macro']*100:.2f}%", f"± {s['std_f1_macro']*100:.2f}%" if is_multi else None)
             
         st.markdown("<br>", unsafe_allow_html=True)
         
-        # 3. Evaluasi Akhir pada Data Uji
-        te = trainer.test_evaluation
-        if te is not None:
-            st.markdown(f"### 🎯 Evaluasi Model Akhir pada Data Uji ({te['test_samples']} Sampel Uji - 20%)")
+        # Tabel Perbandingan dengan Baseline Dummy Classifier (Sesuai Tabel BAB IV Skripsi)
+        if s.get("baseline_summary"):
+            b = s["baseline_summary"]
+            st.markdown("#### 📊 Perbandingan Hasil Evaluasi XGBoost 12-Fold vs Baseline (Kelas Mayoritas)")
+            st.caption("Baseline menggunakan `DummyClassifier(strategy='most_frequent')` dengan skema 12-Fold yang identik untuk mengukur keunggulan algoritma XGBoost.")
             
-            col_t1, col_t2, col_t3, col_t4 = st.columns(4)
-            with col_t1:
-                st.markdown(f"""
-                <div class="metric-card">
-                    <div class="metric-title">Akurasi Uji Akhir</div>
-                    <div class="metric-value" style="color: #10B981;">{te['accuracy']*100:.2f}%</div>
-                    <div class="metric-sub">{int(round(te['accuracy']*te['test_samples']))} dari {te['test_samples']} benar</div>
-                </div>
-                """, unsafe_allow_html=True)
-            with col_t2:
-                st.markdown(f"""
-                <div class="metric-card">
-                    <div class="metric-title">Macro Precision</div>
-                    <div class="metric-value">{te['precision_macro']*100:.2f}%</div>
-                    <div class="metric-sub">Rata-rata tidak berbobot</div>
-                </div>
-                """, unsafe_allow_html=True)
-            with col_t3:
-                st.markdown(f"""
-                <div class="metric-card">
-                    <div class="metric-title">Macro Recall</div>
-                    <div class="metric-value">{te['recall_macro']*100:.2f}%</div>
-                    <div class="metric-sub">Rata-rata sensitivitas kelas</div>
-                </div>
-                """, unsafe_allow_html=True)
-            with col_t4:
-                st.markdown(f"""
-                <div class="metric-card">
-                    <div class="metric-title">Macro F1-Score</div>
-                    <div class="metric-value">{te['f1_macro']*100:.2f}%</div>
-                    <div class="metric-sub">Harmonic mean precision-recall</div>
-                </div>
-                """, unsafe_allow_html=True)
-                
-            st.markdown("<br>", unsafe_allow_html=True)
+            comp_data = [
+                {
+                    "Metrik Evaluasi": "Accuracy",
+                    "Baseline (Kelas Mayoritas)": f"{b['accuracy']*100:.2f}%",
+                    "XGBoost 12-Fold (OOF)": f"{s['mean_accuracy']*100:.2f}%",
+                    "Peningkatan (Poin Persentase)": f"+{(s['mean_accuracy'] - b['accuracy'])*100:.2f}"
+                },
+                {
+                    "Metrik Evaluasi": "Macro Precision",
+                    "Baseline (Kelas Mayoritas)": f"{b['precision_macro']*100:.2f}%",
+                    "XGBoost 12-Fold (OOF)": f"{s['mean_precision_macro']*100:.2f}%",
+                    "Peningkatan (Poin Persentase)": f"+{(s['mean_precision_macro'] - b['precision_macro'])*100:.2f}"
+                },
+                {
+                    "Metrik Evaluasi": "Macro Recall",
+                    "Baseline (Kelas Mayoritas)": f"{b['recall_macro']*100:.2f}%",
+                    "XGBoost 12-Fold (OOF)": f"{s['mean_recall_macro']*100:.2f}%",
+                    "Peningkatan (Poin Persentase)": f"+{(s['mean_recall_macro'] - b['recall_macro'])*100:.2f}"
+                },
+                {
+                    "Metrik Evaluasi": "Macro F1-Score",
+                    "Baseline (Kelas Mayoritas)": f"{b['f1_macro']*100:.2f}%",
+                    "XGBoost 12-Fold (OOF)": f"{s['mean_f1_macro']*100:.2f}%",
+                    "Peningkatan (Poin Persentase)": f"+{(s['mean_f1_macro'] - b['f1_macro'])*100:.2f}"
+                }
+            ]
+            st.dataframe(pd.DataFrame(comp_data), use_container_width=True, hide_index=True)
             
-            # Confusion Matrix & Classification Report
-            col_cm, col_cr = st.columns([1, 1])
+        st.markdown("<br>", unsafe_allow_html=True)
+        
+        # Tabel Hasil per Random State jika Multi-Seed
+        if is_multi and s.get("seed_summaries"):
+            with st.expander("🔎 Rincian Hasil Evaluasi per Random State (5 Seed)", expanded=False):
+                seed_rows = []
+                for seed_res in s["seed_summaries"]:
+                    seed_rows.append({
+                        "Random State": seed_res["seed"],
+                        "Accuracy": f"{seed_res['accuracy']*100:.2f}%",
+                        "Macro Precision": f"{seed_res['precision_macro']*100:.2f}%",
+                        "Macro Recall": f"{seed_res['recall_macro']*100:.2f}%",
+                        "Macro F1-Score": f"{seed_res['f1_macro']*100:.2f}%"
+                    })
+                st.dataframe(pd.DataFrame(seed_rows), use_container_width=True, hide_index=True)
+                
+        # Confusion Matrix & Classification Report per Kelas
+        col_cm, col_cr = st.columns([1, 1.1])
+        
+        with col_cm:
+            st.markdown("#### Confusion Matrix (Rata-rata 5 Seed)" if is_multi else "#### Confusion Matrix (12-Fold OOF)")
+            cm = np.array(s["mean_confusion_matrix"])
             
-            with col_cm:
-                st.markdown("#### Confusion Matrix (Data Uji Akhir)")
-                cm = np.array(te["confusion_matrix"])
-                
-                fig, ax = plt.subplots(figsize=(5, 4))
-                sns.heatmap(
-                    cm, annot=True, fmt="d", cmap="Blues",
-                    xticklabels=CLASS_NAMES, yticklabels=CLASS_NAMES,
-                    ax=ax, cbar=False, annot_kws={"size": 12, "weight": "bold"}
-                )
-                ax.set_xlabel("Prediksi Model XGBoost", fontsize=10, fontweight="bold")
-                ax.set_ylabel("Label Target Sebenarnya", fontsize=10, fontweight="bold")
-                ax.set_title("Confusion Matrix 4 Kelas", fontsize=11, fontweight="bold")
-                st.pyplot(fig)
-                plt.close()
-                
-            with col_cr:
-                st.markdown("#### Laporan Klasifikasi per Kelas (Classification Report)")
-                cr_df = pd.DataFrame(te["class_report_table"])
-                cr_df_display = cr_df.copy()
-                cr_df_display["Precision"] = (cr_df_display["Precision"] * 100).round(2).astype(str) + "%"
-                cr_df_display["Recall"] = (cr_df_display["Recall"] * 100).round(2).astype(str) + "%"
-                cr_df_display["F1-Score"] = (cr_df_display["F1-Score"] * 100).round(2).astype(str) + "%"
-                st.dataframe(cr_df_display, use_container_width=True, height=180)
-                
-                st.markdown("""
-                <div style="font-size: 0.85rem; color: #64748B; line-height: 1.4; margin-top: 10px;">
-                    <strong>Catatan Metrik:</strong> Evaluasi akhir dilakukan pada data uji terisolasi yang tidak pernah digunakan selama pemilihan hyperparameter pada 5-fold cross validation.
-                </div>
-                """, unsafe_allow_html=True)
-                
-            st.markdown("<br>", unsafe_allow_html=True)
+            fig, ax = plt.subplots(figsize=(5, 4.2))
+            sns.heatmap(
+                cm, annot=True, fmt=".1f" if is_multi else "d", cmap="Blues",
+                xticklabels=CLASS_NAMES, yticklabels=CLASS_NAMES,
+                ax=ax, cbar=False, annot_kws={"size": 11, "weight": "bold"}
+            )
+            ax.set_xlabel("Prediksi Model XGBoost", fontsize=10, fontweight="bold")
+            ax.set_ylabel("Label Target Sebenarnya", fontsize=10, fontweight="bold")
+            ax.set_title("Confusion Matrix 4 Kelas", fontsize=11, fontweight="bold")
+            st.pyplot(fig)
+            plt.close()
+            st.caption("*Catatan: Nilai pecahan merupakan rata-rata prediksi 110 anak lintas 5 kali pengujian random state.*")
             
-            # Feature Importance
-            if trainer.feature_importance:
-                st.markdown("### 📊 Tingkat Kepentingan Fitur Indikator (Feature Importance)")
-                fi_df = pd.DataFrame(trainer.feature_importance)
-                
-                fig, ax = plt.subplots(figsize=(9, 3.5))
-                bars = ax.bar(fi_df["feature"], fi_df["gain"], color="#3B82F6", edgecolor="#1E3A8A", linewidth=1)
-                ax.set_ylabel("Relative Information Gain", fontsize=10)
-                ax.set_xlabel("Indikator Fitur (X1 - X8)", fontsize=10)
-                ax.set_title("Kontribusi Indikator dalam Pemisahan Pohon Keputusan XGBoost (Gain)", fontsize=11, fontweight="bold")
-                ax.grid(axis="y", linestyle="--", alpha=0.3)
-                
-                for bar in bars:
-                    height = bar.get_height()
-                    if height > 0:
-                        ax.annotate(f"{height:.2f}",
-                                    xy=(bar.get_x() + bar.get_width() / 2, height),
-                                    xytext=(0, 3),
-                                    textcoords="offset points",
-                                    ha="center", va="bottom", fontsize=8, fontweight="bold")
-                                    
-                st.pyplot(fig)
-                plt.close()
+        with col_cr:
+            st.markdown("#### Laporan Klasifikasi per Kelas")
+            if s.get("class_summary"):
+                cr_rows = []
+                for cls in CLASS_NAMES:
+                    c_info = s["class_summary"].get(cls, {})
+                    p_m = c_info.get("precision_mean", 0) * 100
+                    r_m = c_info.get("recall_mean", 0) * 100
+                    f_m = c_info.get("f1_mean", 0) * 100
+                    cr_rows.append({
+                        "Kategori": cls,
+                        "Precision": f"{p_m:.2f}%",
+                        "Recall": f"{r_m:.2f}%",
+                        "F1-Score": f"{f_m:.2f}%",
+                        "Support": c_info.get("support", "-")
+                    })
+                st.dataframe(pd.DataFrame(cr_rows), use_container_width=True, hide_index=True)
+            st.markdown("""
+            <div style="font-size: 0.85rem; color: #64748B; line-height: 1.4; margin-top: 10px;">
+                <strong>Catatan Metrik:</strong> Seluruh metrik dihitung secara Out-Of-Fold pada seluruh 110 sampel anak. Model tidak pernah menguji data yang sedang dipelajari pada fold yang sama.
+            </div>
+            """, unsafe_allow_html=True)
+            
+        st.markdown("<br>", unsafe_allow_html=True)
+        
+        # Feature Importance (Gain & Weight) - Selalu Ditampilkan jika Model Tersedia
+        if trainer.feature_importance:
+            st.markdown("### 📊 Tingkat Kepentingan Fitur Indikator (Feature Importance)")
+            fi_df = pd.DataFrame(trainer.feature_importance).sort_values("gain", ascending=False)
+            
+            fig, ax = plt.subplots(figsize=(9, 3.8))
+            bars = ax.bar(fi_df["feature"], fi_df["gain"], color="#3B82F6", edgecolor="#1E3A8A", linewidth=1)
+            ax.set_ylabel("Relative Information Gain", fontsize=10)
+            ax.set_xlabel("Indikator Fitur (X1 - X8)", fontsize=10)
+            ax.set_title("Kontribusi Indikator dalam Pemisahan Pohon Keputusan XGBoost (Gain)", fontsize=11, fontweight="bold")
+            ax.grid(axis="y", linestyle="--", alpha=0.3)
+            
+            for bar in bars:
+                height = bar.get_height()
+                if height > 0:
+                    ax.annotate(f"{height:.2f}",
+                                xy=(bar.get_x() + bar.get_width() / 2, height),
+                                xytext=(0, 3),
+                                textcoords="offset points",
+                                ha="center", va="bottom", fontsize=8, fontweight="bold")
+                                
+            st.pyplot(fig)
+            plt.close()
     else:
         st.info("💡 Model belum dilatih atau dimuat. Silakan atur hyperparameter di atas lalu klik tombol pelatihan.")

@@ -60,13 +60,13 @@ bash run.sh
 │   ├── constants.py           # Definisi indikator, kategori, & konstanta
 │   ├── dataset.py             # Generator dataset acuan 6-sheet (Mulberry32 PRNG)
 │   ├── validator.py           # Validasi integritas data, tipe data, & target
-│   ├── model.py               # Pengelola training XGBoost & Stratified 5-Fold CV
+│   ├── model.py               # Pengelola evaluasi XGBoost Stratified 12-Fold CV (OOF) & model final
 │   └── predictor.py           # Modul inferensi tunggal (single) & batch Excel
 │
 ├── views/                     # Halaman antarmuka pengguna (Streamlit Views)
 │   ├── beranda.py             # Dashboard utama & ringkasan status model
 │   ├── data_validasi.py       # Eksplorasi dataset, diagnostik, & visualisasi
-│   ├── pelatihan_evaluasi.py  # Laboratorium tuning 5-Fold CV & model fitting
+│   ├── pelatihan_evaluasi.py  # Laboratorium tuning 12-Fold CV, 5 Random State, & model fitting
 │   ├── prediksi_single.py     # Formulir observasi interaktif 8 indikator
 │   ├── prediksi_batch.py      # Klasifikasi massal file Excel & ekspor hasil
 │   └── tentang.py             # Landasan teori STPPA & metodologi skripsi
@@ -97,5 +97,5 @@ bash run.sh
 ---
 
 ## 📝 Catatan Metodologi & Etika
-- Prototipe ini menggunakan data simulasi benchmark 110 anak untuk keperluan demonstrasi metodologi skripsi.
+- Sistem ini dievaluasi menggunakan **Stratified 12-Fold Cross Validation (Out-Of-Fold)** dengan 5 random state pada seluruh 110 data anak RA Qotrunnada (selaras BAB IV skripsi). Model operasional dilatih menggunakan seluruh 110 data.
 - Hasil keluaran model kecerdasan buatan merupakan alat bantu pendukung (*decision support tool*) dan bukan pengganti rubrik penilaian observasi langsung guru di kelas.

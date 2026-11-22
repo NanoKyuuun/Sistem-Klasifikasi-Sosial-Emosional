@@ -151,62 +151,32 @@ def generate_benchmark_simulation_dataset(
         {"Parameter": "Distribusi MB", "Nilai": 14, "Keterangan": "Total skor 14 - 19"},
         {"Parameter": "Distribusi BSH", "Nilai": 39, "Keterangan": "Total skor 20 - 25"},
         {"Parameter": "Distribusi BSB", "Nilai": 27, "Keterangan": "Total skor 26 - 32"},
-        {"Parameter": "Pembagian Latih/Uji", "Nilai": "80:20 (88 / 22)", "Keterangan": "Stratified train-test split"},
-        {"Parameter": "Metode Validasi", "Nilai": "Stratified 5-Fold", "Keterangan": "Diterapkan pada 88 data latih"}
+        {"Parameter": "Metode Validasi", "Nilai": "Stratified 12-Fold CV (OOF)", "Keterangan": "Diterapkan pada seluruh 110 data anak"},
+        {"Parameter": "Pelatihan Final", "Nilai": "110 Sampel Penuh", "Keterangan": "Dilatih pada seluruh 110 sampel tanpa holdout split"}
     ])
     
-    # Sheet 5: Data Model (Data Anak + Target_Skripsi + Target_XGBoost + Bagian_Data + Fold_Validasi)
+    # Sheet 5: Data Model (Data Anak + Target_Skripsi + Target_XGBoost + Fold_Validasi)
     data_model = data_anak.copy()
     data_model["Target_Skripsi"] = data_model["Target"].map(TARGET_TO_SKRIPSI)
     data_model["Target_XGBoost"] = data_model["Target"].map(TARGET_TO_XGB)
     
-    # Lakukan Stratified Train/Test Split (80:20) dengan random_state tetap
-    train_idx, test_idx = train_test_split(
-        data_model.index,
-        test_size=DEFAULT_TEST_SIZE,
-        stratify=data_model["Target"],
-        random_state=seed
-    )
-    
-    data_model["Bagian_Data"] = "Latih"
-    data_model.loc[test_idx, "Bagian_Data"] = "Uji"
-    
+    # Tetapkan Stratified 12-Fold pada seluruh 110 baris
     data_model["Fold_Validasi"] = 0
-    df_train = data_model.loc[train_idx]
-    
-    # Stratified 5-Fold pada data latih
     skf = StratifiedKFold(n_splits=DEFAULT_N_SPLITS, shuffle=True, random_state=seed)
-    for fold_num, (_, val_idx_relative) in enumerate(skf.split(df_train, df_train["Target"]), 1):
-        actual_val_indices = df_train.index[val_idx_relative]
+    for fold_num, (_, val_idx) in enumerate(skf.split(data_model, data_model["Target"]), 1):
+        actual_val_indices = data_model.index[val_idx]
         data_model.loc[actual_val_indices, "Fold_Validasi"] = fold_num
     
-    # Sheet 6: Persiapan Model (Komposisi Latih/Uji dan Komposisi 5 Fold)
+    # Sheet 6: Persiapan Model (Komposisi 12 Fold)
     persiapan_rows = []
-    # Tabel Train vs Test
-    for cat in CATEGORIES:
-        code = cat["code"]
-        total_cnt = int((data_model["Target"] == code).sum())
-        train_cnt = int(((data_model["Target"] == code) & (data_model["Bagian_Data"] == "Latih")).sum())
-        test_cnt = int(((data_model["Target"] == code) & (data_model["Bagian_Data"] == "Uji")).sum())
-        persiapan_rows.append({
-            "Bagian": "Train-Test Split",
-            "Kategori": code,
-            "Total Seluruh": total_cnt,
-            "Data Latih (80%)": train_cnt,
-            "Data Uji (20%)": test_cnt,
-            "Keterangan": f"Rasio Stratified {code}"
-        })
-    
-    # Tabel 5 Fold
-    for f in range(1, 6):
+    for f in range(1, DEFAULT_N_SPLITS + 1):
         fold_subset = data_model[data_model["Fold_Validasi"] == f]
         persiapan_rows.append({
             "Bagian": f"Fold Validasi {f}",
             "Kategori": "Semua Kelas",
             "Total Seluruh": len(fold_subset),
-            "Data Latih (80%)": f"BB:{(fold_subset['Target']=='BB').sum()}, MB:{(fold_subset['Target']=='MB').sum()}",
-            "Data Uji (20%)": f"BSH:{(fold_subset['Target']=='BSH').sum()}, BSB:{(fold_subset['Target']=='BSB').sum()}",
-            "Keterangan": f"Total Fold {f} = {len(fold_subset)} sampel"
+            "Proporsi Kelas": f"BB:{(fold_subset['Target']=='BB').sum()}, MB:{(fold_subset['Target']=='MB').sum()}, BSH:{(fold_subset['Target']=='BSH').sum()}, BSB:{(fold_subset['Target']=='BSB').sum()}",
+            "Keterangan": f"Sampel Validasi Fold {f} = {len(fold_subset)} anak"
         })
         
     persiapan_model = pd.DataFrame(persiapan_rows)

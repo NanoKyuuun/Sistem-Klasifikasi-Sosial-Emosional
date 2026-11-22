@@ -167,16 +167,16 @@ def validate_dataset(df: pd.DataFrame, is_training: bool = False) -> Dict[str, A
                 cleaned_df["Target_XGBoost"] = [TARGET_TO_XGB[t] for t in normalized_targets]
                 cleaned_df["Target_Skripsi"] = [TARGET_TO_SKRIPSI[t] for t in normalized_targets]
                 
-                # Periksa kecukupan sampel tiap kelas
+                # Periksa kecukupan sampel tiap kelas untuk Stratified 12-Fold
                 counts = cleaned_df["Target"].value_counts()
                 for cls in CLASS_NAMES:
                     count = int(counts.get(cls, 0))
                     if count == 0:
                         errors.append(f"Kategori '{cls}' tidak memiliki sampel sama sekali pada dataset.")
-                    elif count < 5:
+                    elif count < 12:
                         warnings.append(
-                            f"Kategori '{cls}' hanya memiliki {count} sampel (kurang dari 5). "
-                            "Stratified 5-fold cross validation mensyaratkan minimal 5 sampel agar setiap fold memiliki perwakilan."
+                            f"Kategori '{cls}' memiliki {count} sampel (kurang dari 12). "
+                            "Pada Stratified 12-fold cross validation, kategori ini akan didistribusikan sehingga sebagian fold tidak memuat sampel kategori ini."
                         )
     
     # Konversi kolom fitur ke integer jika tidak ada error
@@ -195,14 +195,12 @@ def validate_dataset(df: pd.DataFrame, is_training: bool = False) -> Dict[str, A
 
 def validate_training_dataset(df_model: pd.DataFrame, df_anak: Optional[pd.DataFrame] = None) -> Dict[str, Any]:
     """
-    B03: Validasi integritas tingkat lanjut khusus persiapan pelatihan model XGBoost.
+    Validasi integritas tingkat lanjut khusus persiapan pelatihan model XGBoost (12-Fold OOF).
     Memeriksa:
     1. Validitas seluruh baris X1-X8 dan Target.
-    2. Konsistensi pembagian Latih / Uji jika kolom Bagian_Data tersedia.
-    3. Ketidaktumpangtindihan observasi data latih dan uji akhir.
-    4. Keunikan ID observasi jika kolom 'No' tersedia.
-    5. Konsistensi nilai skor dengan sheet Data Anak (jika dilampirkan).
-    6. Kecukupan sampel per kelas pada data latih (minimal 5 sampel untuk 5-fold).
+    2. Keunikan ID observasi jika kolom 'No' tersedia.
+    3. Konsistensi nilai skor dengan sheet Data Anak (jika dilampirkan).
+    4. Kecukupan sampel per kelas pada data pelatihan.
     """
     base_val = validate_dataset(df_model, is_training=True)
     if not base_val["is_valid"]:
@@ -219,35 +217,7 @@ def validate_training_dataset(df_model: pd.DataFrame, df_anak: Optional[pd.DataF
         if dup_no:
             warnings.append(f"Ditemukan nomor identitas observasi 'No' yang berulang: {dup_no[:5]}.")
     
-    # 2. Cek pembagian data
-    has_split = "Bagian_Data" in cleaned_df.columns
-    if has_split:
-        valid_split_values = ["Latih", "Uji"]
-        split_series = cleaned_df["Bagian_Data"].astype(str).str.strip().str.capitalize()
-        invalid_splits = split_series[~split_series.isin(valid_split_values)]
-        if not invalid_splits.empty:
-            errors.append(f"Ditemukan nilai 'Bagian_Data' tidak valid (wajib 'Latih' atau 'Uji').")
-        
-        train_mask = (split_series == "Latih")
-        test_mask = (split_series == "Uji")
-        train_count = int(train_mask.sum())
-        test_count = int(test_mask.sum())
-        
-        if train_count == 0:
-            errors.append("Dataset tidak memiliki data berlabel 'Latih' untuk melatih model.")
-        if test_count == 0:
-            warnings.append("Dataset tidak memiliki data 'Uji'. Evaluasi uji akhir independen tidak dapat dilakukan.")
-            
-        # Cek kecukupan sampel per kelas pada DATA LATIH secara spesifik
-        if train_count > 0:
-            train_targets = cleaned_df.loc[train_mask, "Target"]
-            train_counts = train_targets.value_counts()
-            for cls in CLASS_NAMES:
-                cnt = int(train_counts.get(cls, 0))
-                if cnt < 5:
-                    warnings.append(f"Data latih untuk kategori '{cls}' hanya memiliki {cnt} sampel (kurang dari 5).")
-    
-    # 3. Konsistensi Data Anak vs Data Model jika diberikan
+    # 2. Cek konsistensi Data Anak vs Data Model jika diberikan
     if df_anak is not None and not df_anak.empty and "No" in cleaned_df.columns and "No" in df_anak.columns:
         # Cek apakah skor X1-X8 cocok per No
         merged = pd.merge(cleaned_df, df_anak, on="No", suffixes=("_model", "_anak"))

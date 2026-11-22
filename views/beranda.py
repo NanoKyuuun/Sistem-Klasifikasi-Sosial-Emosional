@@ -17,8 +17,8 @@ def render_beranda(trainer):
     
     st.markdown("""
     <div class="disclaimer-banner">
-        <strong>Pemberitahuan Status Prototipe & Data Simulasi:</strong><br>
-        Sistem ini merupakan prototipe klasifikasi berbasis machine learning. Data pelatihan awal menggunakan 110 data simulasi (dummy benchmark) dengan 8 indikator berbobot sama. Hasil prediksi ditujukan untuk demonstrasi metodologi skripsi dan bukan pengganti rubrik penilaian observasi langsung guru.
+        <strong>Pemberitahuan Status Penelitian & Metodologi:</strong><br>
+        Sistem ini mengimplementasikan algoritma XGBoost untuk klasifikasi tingkat perkembangan sosial-emosional anak berdasarkan 8 indikator capaian. Evaluasi menggunakan <strong>Stratified 12-Fold Cross Validation (Out-of-Fold)</strong> dengan 5 random state pada 110 data anak (selaras naskah BAB IV). Hasil prediksi merupakan instrumen bantu keputusan pendidik dan bukan pengganti rubrik penilaian observasi langsung guru.
     </div>
     """, unsafe_allow_html=True)
     
@@ -40,37 +40,41 @@ def render_beranda(trainer):
         """, unsafe_allow_html=True)
         
     with col2:
-        test_acc = f"{trainer.metadata.get('test_accuracy', 0)*100:.2f}%" if (is_model_ready and trainer.metadata and trainer.metadata.get('test_accuracy') is not None) else "-"
+        cv_summary = trainer.cv_summary or (trainer.metadata.get("cv_summary") if (is_model_ready and trainer.metadata) else None)
+        oof_acc = f"{cv_summary.get('mean_accuracy', 0)*100:.2f}%" if (is_model_ready and cv_summary and cv_summary.get('mean_accuracy') is not None) else "-"
+        seeds_cnt = len(cv_summary.get("seeds", [])) if (cv_summary and cv_summary.get("seeds")) else 5
+        sub_text = f"Rata-rata {seeds_cnt} Seed (110 Data)" if seeds_cnt > 1 else "110 Data OOF"
         st.markdown(f"""
         <div class="metric-card">
-            <div class="metric-title">Akurasi Uji Akhir</div>
-            <div class="metric-value">{test_acc}</div>
-            <div class="metric-sub">Evaluasi 22 data uji (20%)</div>
+            <div class="metric-title">Akurasi OOF 12-Fold</div>
+            <div class="metric-value" style="color: #10B981;">{oof_acc}</div>
+            <div class="metric-sub">{sub_text}</div>
         </div>
         """, unsafe_allow_html=True)
         
     with col3:
-        cv_acc = f"{trainer.cv_summary.get('mean_accuracy', 0)*100:.2f}%" if (is_model_ready and trainer.cv_summary) else "-"
+        oof_f1 = f"{cv_summary.get('mean_f1_macro', 0)*100:.2f}%" if (is_model_ready and cv_summary and cv_summary.get('mean_f1_macro') is not None) else "-"
         st.markdown(f"""
         <div class="metric-card">
-            <div class="metric-title">Mean Akurasi 5-Fold</div>
-            <div class="metric-value">{cv_acc}</div>
-            <div class="metric-sub">Cross-validation data latih</div>
+            <div class="metric-title">Macro F1 OOF 12-Fold</div>
+            <div class="metric-value">{oof_f1}</div>
+            <div class="metric-sub">Harmonic mean precision-recall</div>
         </div>
         """, unsafe_allow_html=True)
         
     with col4:
-        st.markdown("""
+        total_samples = trainer.metadata.get("train_samples", 110) if (is_model_ready and trainer.metadata) else 110
+        st.markdown(f"""
         <div class="metric-card">
-            <div class="metric-title">Total Fitur & Kelas</div>
-            <div class="metric-value">8 / 4</div>
-            <div class="metric-sub">8 Indikator (X1-X8), 4 Kategori</div>
+            <div class="metric-title">Total Fitur & Sampel</div>
+            <div class="metric-value">8 / {total_samples}</div>
+            <div class="metric-sub">8 Indikator, {total_samples} Data Anak</div>
         </div>
         """, unsafe_allow_html=True)
     
     st.markdown("<br>", unsafe_allow_html=True)
     
-    # A01: Tombol Jalur Cepat (Call To Action)
+    # Tombol Jalur Cepat (Call To Action)
     st.markdown("### 🚀 Jalur Penggunaan Aplikasi")
     col_path1, col_path2 = st.columns(2)
     
@@ -78,7 +82,7 @@ def render_beranda(trainer):
         st.markdown("""
         <div style="background: white; border: 1px solid #CBD5E1; border-radius: 14px; padding: 18px; height: 100%;">
             <div style="font-weight: 800; font-size: 1.1rem; color: #1E293B; margin-bottom: 6px;">🔬 Jalur 1: Peneliti & Pelatihan Model</div>
-            <p style="font-size: 0.85rem; color: #64748B; margin-bottom: 12px;">Validasi integritas dataset, lakukan eksperimen 5-Fold Cross Validation, dan latih model XGBoost baru.</p>
+            <p style="font-size: 0.85rem; color: #64748B; margin-bottom: 12px;">Validasi integritas dataset, lakukan eksperimen Stratified 12-Fold Cross Validation (5 Random State), bandingkan dengan baseline, dan latih model XGBoost final.</p>
         </div>
         """, unsafe_allow_html=True)
         
@@ -86,7 +90,7 @@ def render_beranda(trainer):
         st.markdown("""
         <div style="background: white; border: 1px solid #CBD5E1; border-radius: 14px; padding: 18px; height: 100%;">
             <div style="font-weight: 800; font-size: 1.1rem; color: #1E293B; margin-bottom: 6px;">🎯 Jalur 2: Guru & Inferensi Prediksi</div>
-            <p style="font-size: 0.85rem; color: #64748B; margin-bottom: 12px;">Klasifikasikan penilaian perkembangan anak secara satuan melalui formulir atau secara massal dari berkas Excel.</p>
+            <p style="font-size: 0.85rem; color: #64748B; margin-bottom: 12px;">Klasifikasikan penilaian perkembangan anak secara satuan melalui formulir atau secara massal dari berkas Excel dengan model final terlatih.</p>
         </div>
         """, unsafe_allow_html=True)
     
@@ -123,8 +127,8 @@ def render_beranda(trainer):
         st.markdown("""
         #### 🧪 Tahap Eksperimen & Analisis
         1. **📊 Data & Validasi**: Unggah atau eksplorasi dataset 110 anak, tinjau distribusi 4 kelas, dan jalankan validasi integritas kolom.
-        2. **⚙️ Pelatihan & Evaluasi**: Konfigurasikan parameter XGBoost, jalankan **Stratified 5-Fold Cross Validation**, tinjau Confusion Matrix dan metrik per kelas, lalu simpan model terbaik.
-        3. **📖 Tentang Sistem**: Pelajari landasan teori indikator perkembangan anak, rumus simulasi, serta metodologi XGBoost.
+        2. **⚙️ Pelatihan & Evaluasi**: Konfigurasikan parameter XGBoost, jalankan **Stratified 12-Fold Cross Validation** (5 Random State), tinjau perbandingan baseline, Confusion Matrix rata-rata, dan latih model final 110 data.
+        3. **📖 Tentang Sistem**: Pelajari landasan teori indikator perkembangan anak dan metodologi XGBoost.
         """)
         
     with col_b:

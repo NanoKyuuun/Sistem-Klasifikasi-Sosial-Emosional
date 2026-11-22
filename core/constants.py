@@ -133,10 +133,12 @@ SKRIPSI_CODE_MAP = {
     1: "BB", 2: "MB", 3: "BSH", 4: "BSB"
 }
 
-# Default Parameters
+# Default Parameters (Sesuai Naskah BAB IV & Google Colab)
 DEFAULT_RANDOM_STATE = 20260926
-DEFAULT_TEST_SIZE = 0.20
-DEFAULT_N_SPLITS = 5
+DEFAULT_N_SPLITS = 12
+RANDOM_STATES = [2026, 42, 123, 2025, 20260926]
+# DEFAULT_TEST_SIZE telah dipensiunkan: alur final menggunakan Stratified 12-Fold CV pada seluruh 110 data tanpa holdout split
+DEFAULT_TEST_SIZE = 0.0
 
 DEFAULT_XGB_PARAMS = {
     "n_estimators": 100,

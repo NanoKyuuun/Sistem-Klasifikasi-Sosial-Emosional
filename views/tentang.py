@@ -74,7 +74,7 @@ def render_tentang():
     2. **Objective Function:** `multi:softprob` dengan `num_class=4`, menghasilkan probabilitas distribusi tiap kelas $P(y=k|X)$.
     3. **Fitur Masukan ($X$):** Vektor 8 dimensi $(X_1, X_2, ..., X_8)$ dengan nilai diskrit 1, 2, 3, atau 4.
     4. **Regularisasi:** XGBoost menerapkan regularisasi L1 ($\alpha$) dan L2 ($\lambda$) pada fungsi loss untuk mencegah overfitting pada dataset kecil.
-    5. **Validasi:** **Stratified 5-Fold Cross Validation** pada 88 data latih memastikan setiap fold memiliki proporsi kelas yang adil dan representatif.
+    5. **Validasi & Pelatihan:** **Stratified 12-Fold Cross Validation (Out-of-Fold)** pada seluruh 110 data anak dengan evaluasi 5 random state memastikan estimasi generalisasi yang stabil dan bebas bias partisi data (selaras dengan eksperimen BAB IV). Model akhir dilatih pada seluruh 110 data untuk operasional prediksi.
     """)
     
     st.markdown("<br>", unsafe_allow_html=True)

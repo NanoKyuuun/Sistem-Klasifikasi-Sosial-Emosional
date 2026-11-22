@@ -58,14 +58,9 @@ def render_prediksi_single(trainer: XGBoostClassifierTrainer):
             st.session_state["single_nama"] = "Ahmad Azzam"
             st.session_state["single_kelas"] = "Kelas B Putra"
             st.session_state["single_umur"] = "5,6"
-            st.session_state["single_x1"] = 3
-            st.session_state["single_x2"] = 3
-            st.session_state["single_x3"] = 4
-            st.session_state["single_x4"] = 3
-            st.session_state["single_x5"] = 3
-            st.session_state["single_x6"] = 4
-            st.session_state["single_x7"] = 3
-            st.session_state["single_x8"] = 3
+            example_vals = {"x1": 3, "x2": 3, "x3": 4, "x4": 3, "x5": 3, "x6": 4, "x7": 3, "x8": 3}
+            for k, val in example_vals.items():
+                st.session_state[f"single_{k}"] = val
             st.session_state["single_example_loaded"] = True
             st.rerun()
             
@@ -104,19 +99,19 @@ def render_prediksi_single(trainer: XGBoostClassifierTrainer):
         st.markdown("**X1: Mengenali & Mengekspresikan Emosi**")
         st.caption("Mengenali perasaan senang, sedih, marah, dan mengekspresikan dengan wajar.")
         def_idx_x1 = scale_choices.index(st.session_state.get("single_x1")) if st.session_state.get("single_x1") in scale_choices else 0
-        scores["X1"] = st.selectbox("Skor X1:", options=scale_choices, index=def_idx_x1, format_func=format_scale_option, key="select_x1")
+        scores["X1"] = st.selectbox("Skor X1:", options=scale_choices, index=def_idx_x1, format_func=format_scale_option)
         
     with col_x2:
         st.markdown("**X2: Mengendalikan Emosi**")
         st.caption("Mengendalikan impuls amarah, sabar, dan meredakan kekecewaan.")
         def_idx_x2 = scale_choices.index(st.session_state.get("single_x2")) if st.session_state.get("single_x2") in scale_choices else 0
-        scores["X2"] = st.selectbox("Skor X2:", options=scale_choices, index=def_idx_x2, format_func=format_scale_option, key="select_x2")
+        scores["X2"] = st.selectbox("Skor X2:", options=scale_choices, index=def_idx_x2, format_func=format_scale_option)
         
     with col_x3:
         st.markdown("**X3: Menyesuaikan Diri**")
         st.caption("Mudah beradaptasi dengan lingkungan baru dan rutinitas sekolah.")
         def_idx_x3 = scale_choices.index(st.session_state.get("single_x3")) if st.session_state.get("single_x3") in scale_choices else 0
-        scores["X3"] = st.selectbox("Skor X3:", options=scale_choices, index=def_idx_x3, format_func=format_scale_option, key="select_x3")
+        scores["X3"] = st.selectbox("Skor X3:", options=scale_choices, index=def_idx_x3, format_func=format_scale_option)
         
     # Kelompok 2: Tanggung Jawab (X4 - X5)
     st.markdown('<div class="section-header">🛡️ Aspek 2: Tanggung Jawab terhadap Diri & Orang Lain</div>', unsafe_allow_html=True)
@@ -126,13 +121,13 @@ def render_prediksi_single(trainer: XGBoostClassifierTrainer):
         st.markdown("**X4: Mematuhi Aturan**")
         st.caption("Ketaatan terhadap tata tertib kelas, instruksi guru, dan kesepakatan main.")
         def_idx_x4 = scale_choices.index(st.session_state.get("single_x4")) if st.session_state.get("single_x4") in scale_choices else 0
-        scores["X4"] = st.selectbox("Skor X4:", options=scale_choices, index=def_idx_x4, format_func=format_scale_option, key="select_x4")
+        scores["X4"] = st.selectbox("Skor X4:", options=scale_choices, index=def_idx_x4, format_func=format_scale_option)
         
     with col_x5:
         st.markdown("**X5: Tanggung Jawab atas Perilaku/Tugas**")
         st.caption("Menyelesaikan kegiatan mandiri dan merapikan alat permainan.")
         def_idx_x5 = scale_choices.index(st.session_state.get("single_x5")) if st.session_state.get("single_x5") in scale_choices else 0
-        scores["X5"] = st.selectbox("Skor X5:", options=scale_choices, index=def_idx_x5, format_func=format_scale_option, key="select_x5")
+        scores["X5"] = st.selectbox("Skor X5:", options=scale_choices, index=def_idx_x5, format_func=format_scale_option)
         
     # Kelompok 3: Perilaku Prososial (X6 - X8)
     st.markdown('<div class="section-header">🤝 Aspek 3: Perilaku Prososial (Prosocial Behavior)</div>', unsafe_allow_html=True)
@@ -142,19 +137,19 @@ def render_prediksi_single(trainer: XGBoostClassifierTrainer):
         st.markdown("**X6: Bekerja Sama dengan Orang Lain**")
         st.caption("Terlibat aktif dalam permainan bersama dan kolaborasi kelompok.")
         def_idx_x6 = scale_choices.index(st.session_state.get("single_x6")) if st.session_state.get("single_x6") in scale_choices else 0
-        scores["X6"] = st.selectbox("Skor X6:", options=scale_choices, index=def_idx_x6, format_func=format_scale_option, key="select_x6")
+        scores["X6"] = st.selectbox("Skor X6:", options=scale_choices, index=def_idx_x6, format_func=format_scale_option)
         
     with col_x7:
         st.markdown("**X7: Menunjukkan Empati**")
         st.caption("Peduli terhadap perasaan teman dan menunjukkan sikap menghibur.")
         def_idx_x7 = scale_choices.index(st.session_state.get("single_x7")) if st.session_state.get("single_x7") in scale_choices else 0
-        scores["X7"] = st.selectbox("Skor X7:", options=scale_choices, index=def_idx_x7, format_func=format_scale_option, key="select_x7")
+        scores["X7"] = st.selectbox("Skor X7:", options=scale_choices, index=def_idx_x7, format_func=format_scale_option)
         
     with col_x8:
         st.markdown("**X8: Berbagi dan Membantu**")
         st.caption("Rela berbagi alat mainan/makanan dan suka menolong teman.")
         def_idx_x8 = scale_choices.index(st.session_state.get("single_x8")) if st.session_state.get("single_x8") in scale_choices else 0
-        scores["X8"] = st.selectbox("Skor X8:", options=scale_choices, index=def_idx_x8, format_func=format_scale_option, key="select_x8")
+        scores["X8"] = st.selectbox("Skor X8:", options=scale_choices, index=def_idx_x8, format_func=format_scale_option)
         
     st.markdown("<br>", unsafe_allow_html=True)
     
