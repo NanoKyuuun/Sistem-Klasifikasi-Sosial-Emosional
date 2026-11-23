@@ -27,37 +27,39 @@ fi
 
 echo "🔍 Menggunakan interpreter: $($PY_CMD --version)"
 
-# 3. Buat virtual environment jika belum ada
-if [ ! -d ".venv" ]; then
-    echo "📦 Membuat virtual environment (.venv)..."
-    $PY_CMD -m venv .venv
-    if [ $? -ne 0 ]; then
-        echo "❌ Gagal membuat virtual environment."
-        exit 1
-    fi
-    echo "✅ Virtual environment berhasil dibuat."
-fi
-
-# 4. Aktivasi virtual environment
-echo "🔄 Mengaktifkan virtual environment..."
+# 3. Aktivasi virtual environment jika tersedia
 if [ -f ".venv/Scripts/activate" ]; then
     # Windows (Git Bash)
+    echo "🔄 Mengaktifkan virtual environment .venv..."
     source .venv/Scripts/activate
 elif [ -f ".venv/bin/activate" ]; then
     # Unix / Linux / macOS
+    echo "🔄 Mengaktifkan virtual environment .venv..."
     source .venv/bin/activate
-else
-    echo "⚠️ Warning: File aktivasi venv tidak ditemukan, menjalankan dengan Python default..."
 fi
 
-# 5. Instalasi / pembaruan dependensi dari requirements.txt
-echo "📥 Memeriksa dan menginstal paket dependensi..."
-pip install --upgrade pip --quiet
-if [ -f "requirements.txt" ]; then
-    pip install -r requirements.txt --quiet
-    echo "✅ Dependensi siap digunakan."
-else
-    echo "⚠️ File requirements.txt tidak ditemukan."
+# 4. Periksa ketersediaan pustaka utama
+if ! $PY_CMD -c "import streamlit, xgboost, sklearn, pandas, numpy, openpyxl, matplotlib, seaborn" &>/dev/null; then
+    echo "📥 Dependensi belum lengkap. Menyiapkan lingkungan pustaka..."
+    if [ ! -d ".venv" ]; then
+        echo "📦 Membuat virtual environment .venv..."
+        $PY_CMD -m venv .venv
+        if [ -f ".venv/Scripts/activate" ]; then
+            source .venv/Scripts/activate
+        elif [ -f ".venv/bin/activate" ]; then
+            source .venv/bin/activate
+        fi
+    fi
+    echo "📥 Memasang paket dependensi dari requirements.txt..."
+    if [ -f "requirements.txt" ]; then
+        pip install -r requirements.txt
+    else
+        pip install streamlit xgboost pandas numpy scikit-learn openpyxl matplotlib seaborn
+    fi
+    if [ $? -ne 0 ]; then
+        echo "❌ Gagal memasang dependensi pustaka. Harap periksa koneksi internet Anda."
+        exit 1
+    fi
 fi
 
 echo ""
@@ -68,5 +70,5 @@ echo "👉 Tekan CTRL + C di terminal ini untuk menghentikan server."
 echo "========================================================"
 echo ""
 
-# 6. Jalankan aplikasi Streamlit
-streamlit run app.py
+# 5. Jalankan aplikasi Streamlit
+python -m streamlit run app.py
