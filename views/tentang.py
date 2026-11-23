@@ -85,7 +85,7 @@ def render_tentang():
     <div class="disclaimer-banner">
         <strong>Penting untuk Diperhatikan:</strong>
         <ol>
-            <li><strong>Data Simulasi Prototipe:</strong> Prototipe saat ini dibangun dengan skor simulasi berbobot sama untuk memverifikasi fungsionalitas sistem dan pipeline machine learning.</li>
+            <li><strong>Data Empiris Penelitian:</strong> Sistem ini dilatih menggunakan data observasi 110 anak di RA Qotrunnada yang telah divalidasi dan dianalisis menggunakan Stratified 12-Fold Cross Validation (Out-of-Fold) sesuai naskah BAB IV skripsi.</li>
             <li><strong>Peran Guru & Rubrik:</strong> Hasil keluaran sistem merupakan alat bantu komputasi cerdas, bukan vonis mutlak atas kemampuan anak. Pengambilan keputusan pedagogis tetap berlandaskan observasi langsung guru kelas.</li>
             <li><strong>Kerahasiaan Data:</strong> Penggunaan data anak di lingkungan sekolah wajib mematuhi privasi dan etika perlindungan data pribadi anak usia dini.</li>
         </ol>

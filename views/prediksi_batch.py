@@ -44,8 +44,23 @@ def render_prediksi_batch(trainer: XGBoostClassifierTrainer):
         
     model_id = trainer.metadata.get("model_id", "XGBoost-Active") if trainer.metadata else "XGBoost-Active"
     trained_at = trainer.metadata.get("trained_at", "-") if trainer.metadata else "-"
+    is_sim = trainer.metadata.get("is_simulation_model", False) if trainer.metadata else False
+    dataset_source = trainer.metadata.get("dataset_source", "Data Penelitian RA Qotrunnada.xlsx") if trainer.metadata else "Data Penelitian RA Qotrunnada.xlsx"
+    provenance = trainer.metadata.get("data_provenance_notes", "") if trainer.metadata else ""
     
-    st.caption(f"🤖 **Model Aktif:** `{model_id}` | Waktu Pelatihan: *{trained_at}*")
+    if is_sim:
+        st.markdown(f"""
+        <div class="disclaimer-banner">
+            <strong>Pemberitahuan:</strong> Model aktif (<code>{model_id}</code>) dilatih pada data simulasi prototipe.
+        </div>
+        """, unsafe_allow_html=True)
+    else:
+        st.markdown(f"""
+        <div class="info-banner">
+            <strong>✅ Model Aktif:</strong> <code>{model_id}</code> — Dilatih pada <strong>{dataset_source}</strong> (Stratified 12-Fold CV OOF).<br>
+            <span style="font-size: 0.85rem; color: #475569;">{provenance or 'Dataset observasi 110 anak RA Qotrunnada (selaras BAB IV skripsi Wafiqotissalamah)'}</span>
+        </div>
+        """, unsafe_allow_html=True)
     
     # 1. Unggah Berkas Excel
     st.markdown("### 📤 1. Unggah Berkas Excel Penilaian")

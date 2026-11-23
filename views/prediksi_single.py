@@ -42,19 +42,43 @@ def render_prediksi_single(trainer: XGBoostClassifierTrainer):
         return
         
     model_id = trainer.metadata.get("model_id", "XGBoost-Active") if trainer.metadata else "XGBoost-Active"
-    st.markdown(f"""
-    <div class="disclaimer-banner">
-        <strong>Pemberitahuan:</strong> Model aktif (<code>{model_id}</code>) dilatih pada data simulasi prototipe. Hasil klasifikasi menggambarkan kategori yang dipelajari XGBoost dari pola data demonstrasi.
-    </div>
-    """, unsafe_allow_html=True)
+    is_sim = trainer.metadata.get("is_simulation_model", False) if trainer.metadata else False
+    dataset_source = trainer.metadata.get("dataset_source", "Data Penelitian RA Qotrunnada.xlsx") if trainer.metadata else "Data Penelitian RA Qotrunnada.xlsx"
+    provenance = trainer.metadata.get("data_provenance_notes", "") if trainer.metadata else ""
     
-    # Inisialisasi state form contoh jika belum ada
+    if is_sim:
+        st.markdown(f"""
+        <div class="disclaimer-banner">
+            <strong>Pemberitahuan:</strong> Model aktif (<code>{model_id}</code>) dilatih pada data simulasi prototipe. Hasil klasifikasi menggambarkan kategori yang dipelajari XGBoost dari pola data demonstrasi.
+        </div>
+        """, unsafe_allow_html=True)
+    else:
+        st.markdown(f"""
+        <div class="info-banner">
+            <strong>✅ Model Aktif:</strong> <code>{model_id}</code> — Dilatih pada <strong>{dataset_source}</strong> (Stratified 12-Fold CV OOF).<br>
+            <span style="font-size: 0.85rem; color: #475569;">{provenance or 'Dataset observasi 110 anak RA Qotrunnada (selaras BAB IV skripsi Wafiqotissalamah)'}</span>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    # Inisialisasi state form jika belum ada
+    if "single_no" not in st.session_state:
+        st.session_state["single_no"] = 1
+    if "input_nama_anak" not in st.session_state:
+        st.session_state["input_nama_anak"] = st.session_state.get("single_nama", "")
+    if "input_kelas_anak" not in st.session_state:
+        st.session_state["input_kelas_anak"] = st.session_state.get("single_kelas", "")
+    if "input_umur_anak" not in st.session_state:
+        st.session_state["input_umur_anak"] = st.session_state.get("single_umur", "")
     if "single_example_loaded" not in st.session_state:
         st.session_state["single_example_loaded"] = False
         
     col_demo, _ = st.columns([1.5, 2])
     with col_demo:
         if st.button("📋 Isi Contoh Data Demonstrasi (Otomatis)", help="Klik untuk mengisi data contoh secara otomatis untuk keperluan demonstrasi"):
+            st.session_state["single_no"] = 1
+            st.session_state["input_nama_anak"] = "Ahmad Azzam"
+            st.session_state["input_kelas_anak"] = "Kelas B Putra"
+            st.session_state["input_umur_anak"] = "5,6"
             st.session_state["single_nama"] = "Ahmad Azzam"
             st.session_state["single_kelas"] = "Kelas B Putra"
             st.session_state["single_umur"] = "5,6"
@@ -68,13 +92,17 @@ def render_prediksi_single(trainer: XGBoostClassifierTrainer):
     with st.expander("👤 Informasi Identitas Anak (Opsional)", expanded=True):
         col_m1, col_m2, col_m3, col_m4 = st.columns(4)
         with col_m1:
-            input_no = st.number_input("Nomor Urut / ID:", min_value=1, value=1, step=1)
+            input_no = st.number_input("Nomor Urut / ID:", min_value=1, value=int(st.session_state.get("single_no", 1)), step=1)
+            st.session_state["single_no"] = input_no
         with col_m2:
-            input_nama = st.text_input("Nama Anak:", value=st.session_state.get("single_nama", ""))
+            input_nama = st.text_input("Nama Anak:", key="input_nama_anak")
+            st.session_state["single_nama"] = input_nama
         with col_m3:
-            input_kelas = st.text_input("Kelas / Kelompok:", value=st.session_state.get("single_kelas", ""))
+            input_kelas = st.text_input("Kelas / Kelompok:", key="input_kelas_anak")
+            st.session_state["single_kelas"] = input_kelas
         with col_m4:
-            input_umur = st.text_input("Usia (Contoh: 5,6):", value=st.session_state.get("single_umur", ""))
+            input_umur = st.text_input("Usia (Contoh: 5,6):", key="input_umur_anak")
+            st.session_state["single_umur"] = input_umur
             
     st.markdown("<br>", unsafe_allow_html=True)
     
@@ -163,11 +191,14 @@ def render_prediksi_single(trainer: XGBoostClassifierTrainer):
             st.error(f"❌ Harap lengkapi penilaian untuk seluruh indikator. Indikator yang belum diisi: **{', '.join(missing_indicators)}**.")
             return
             
+        nama_str = str(input_nama).strip() if input_nama else ""
+        kelas_str = str(input_kelas).strip() if input_kelas else ""
+        umur_str = str(input_umur).strip() if input_umur else ""
         metadata = {
-            "no": input_no,
-            "nama": input_nama if input_nama.strip() else f"Anak_No_{input_no}",
-            "kelas": input_kelas if input_kelas.strip() else "-",
-            "umur": input_umur if input_umur.strip() else "-"
+            "no": int(input_no) if input_no else 1,
+            "nama": nama_str if nama_str else f"Anak_No_{input_no}",
+            "kelas": kelas_str if kelas_str else "-",
+            "umur": umur_str if umur_str else "-"
         }
         
         result = predict_single(trainer.model, scores, metadata)
